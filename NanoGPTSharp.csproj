@@ -12,4 +12,13 @@
     <PackageReference Include="TorchSharp-cuda-windows" Version="0.99.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Using Include="System.Collections" />
+    <Using Include="TorchSharp" />
+    <Using Include="TorchSharp.Modules" />
+    <Using Include="TorchSharp.torch">
+      <Static>True</Static>
+    </Using>
+  </ItemGroup>
+
 </Project>
