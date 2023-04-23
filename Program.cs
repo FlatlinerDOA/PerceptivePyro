@@ -41,6 +41,10 @@
         /// </summary>
         const int n_embd = 32;
 
+        const double dropout = 0.3;
+        
+        const int n_layers = 3;
+
         static async Task Main(string[] args)
         {
 
@@ -121,7 +125,7 @@
                 }
             }
 
-            var model = new BigramLanguageModel(vocab_size, n_embd, block_size, device);
+            var model = new BigramLanguageModel(vocab_size, n_embd, block_size, n_layers, dropout, device);
             model = model.to(device);
             var (logits, loss) = model.call(xb, yb);
             logits.shape.Dump();

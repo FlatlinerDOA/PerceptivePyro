@@ -19,12 +19,14 @@ namespace NanoGPTSharp
         private Linear key;
         private Linear query;
         private Linear value;
+        private Dropout dropout;
 
-        internal Head(int block_size, int n_embd, int head_size) : base(nameof(Head))
+        internal Head(int block_size, int n_embd, int head_size, double dropout) : base(nameof(Head))
         {
             this.key = nn.Linear(n_embd, head_size, hasBias: false);
             this.query = nn.Linear(n_embd, head_size, hasBias: false);
             this.value = nn.Linear(n_embd, head_size, hasBias: false);
+            this.dropout = nn.Dropout(dropout);
             this.register_buffer("tril", tril(ones(block_size, block_size)));  // triangular matrix of 1's for time so that the past see the future.
             this.RegisterComponents();
         }
@@ -41,6 +43,7 @@ namespace NanoGPTSharp
             var wei = q.matmul(k.transpose(-2, -1)) * (Pow(C, -0.5d)); // (B, T, 16) @ (B, 16, T) ---> (B, T, T)
             wei = wei.masked_fill(this.get_buffer("tril")[..(int)T,..(int)T] == 0, float.NegativeInfinity); // mask fill wei, with the zeroes from tril replaced with -Inf. This gives wei 0's and -Inf in a triangle.
             wei = F.softmax(wei, dim: -1); // Softmax replaces -Inf with 0 and weights the zeroes evenly distributed by row.
+            wei = this.dropout.call(wei);
 
             var v = this.value.call(input); // (B, T, C)
             var output = wei.matmul(v); // (B, T, T) @ (B, T, C) -> (B, T, C)

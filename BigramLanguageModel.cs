@@ -1,11 +1,12 @@
 ﻿namespace NanoGPTSharp
 {
+    using System.Linq;
     using TorchSharp;
     using TorchSharp.Modules;
     using static TorchSharp.torch;
     using F = TorchSharp.torch.nn.functional;
 
-    internal class BigramLanguageModel : torch.nn.Module<torch.Tensor, torch.Tensor?, (torch.Tensor logits, torch.Tensor? loss)>
+    internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
     {
         private readonly int block_size;
         private readonly string device;
@@ -14,31 +15,31 @@
         private Sequential blocks;
         private Linear lm_head;
 
-        public BigramLanguageModel(int vocab_size, int n_embd, int block_size, string device) : base(nameof(BigramLanguageModel))
+        public BigramLanguageModel(int vocab_size, int n_embd, int block_size, int n_layer, double dropout, string device) : base(nameof(BigramLanguageModel))
         {
             this.block_size = block_size;
             this.device = device;
 
             // each token directly reads off the logits for the next token from a lookup table
-            this.token_embedding_table = torch.nn.Embedding(vocab_size, n_embd);
-            this.position_embedding_table = torch.nn.Embedding(block_size, n_embd);
-            this.blocks = torch.nn.Sequential(
-                new Block(n_embd, n_heads: 4, block_size),
-                new Block(n_embd, n_heads: 4, block_size),
-                new Block(n_embd, n_heads: 4, block_size),
-                torch.nn.LayerNorm(n_embd));
-            this.lm_head = torch.nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
+            this.token_embedding_table = nn.Embedding(vocab_size, n_embd);
+            this.position_embedding_table = nn.Embedding(block_size, n_embd);
+
+            var layers = Enumerable.Range(0, n_layer)
+                .Select(layer => ("layer_" + layer, (nn.Module<Tensor, Tensor>)new Block(n_embd, n_heads: 4, block_size, dropout))) // cast each one so whole list is an enumerable of (string, Module<Tensor, Tensor>)
+                .Append(("norm", nn.LayerNorm(n_embd)));
+            this.blocks = nn.Sequential(layers);
+            this.lm_head = nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
             
             this.RegisterComponents();
         }
 
-        public override (torch.Tensor, torch.Tensor) forward(torch.Tensor idx, torch.Tensor? targets = null)
+        public override (Tensor, Tensor) forward(Tensor idx, Tensor? targets = null)
         {
             var (B, T) = (idx.shape[0], idx.shape[1]);
 
             // index and targets are both (b, t) tensor of integers
             var tok_emb = this.token_embedding_table.call(idx); // (Batch, Time, Channel)
-            var pos_emb = this.position_embedding_table.call(torch.arange(T, device: this.device));
+            var pos_emb = this.position_embedding_table.call(arange(T, device: this.device));
             var x = tok_emb + pos_emb; // (B, T, C)
             x = this.blocks.call(x); // Apply self-attention. (B, T, C)
             var logits = this.lm_head.call(x); // (Batch, Time, vocab_size)
@@ -59,7 +60,7 @@
             return (logits, loss);
         }
 
-        public torch.Tensor generate(torch.Tensor idx, int max_new_tokens)
+        public Tensor generate(Tensor idx, int max_new_tokens)
         {
             // idx is (B, T) array of indices
             foreach (var _ in Enumerable.Range(0, max_new_tokens))
@@ -77,9 +78,9 @@
                 // apply softmax to get probabilities
                 var probs = F.softmax(logits, dim: -1); // (B, C)
                 // sample form the distribution
-                var idx_next = torch.multinomial(probs, num_samples: 1); // (B, 1)
+                var idx_next = multinomial(probs, num_samples: 1); // (B, 1)
                 // append sampled index to the running sequence
-                idx = torch.cat(new[] { idx, idx_next }, dim: 1); // (B, T+1)
+                idx = cat(new[] { idx, idx_next }, dim: 1); // (B, T+1)
             }
 
             return idx;

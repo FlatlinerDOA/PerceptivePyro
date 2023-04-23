@@ -16,11 +16,11 @@ namespace NanoGPTSharp
         private LayerNorm ln1;
         private LayerNorm ln2;
 
-        internal Block(int n_embd, int n_heads, int block_size) : base(nameof(Block))
+        internal Block(int n_embd, int n_heads, int block_size, double dropout) : base(nameof(Block))
         {
             this.head_size = n_embd / n_heads;
-            this.sa = new MultiHeadAttention(n_heads, block_size, n_embd, this.head_size);
-            this.ffwd = new FeedForward(n_embd);
+            this.sa = new MultiHeadAttention(n_heads, block_size, n_embd, this.head_size, dropout);
+            this.ffwd = new FeedForward(n_embd, dropout);
             this.ln1 = nn.LayerNorm(n_embd);
             this.ln2 = nn.LayerNorm(n_embd);
             this.RegisterComponents();
