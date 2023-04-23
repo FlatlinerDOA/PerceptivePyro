@@ -7,12 +7,12 @@ internal class Program
     /// <summary>
     /// how many independent sequences will we process in parallel?
     /// </summary>
-    const int batch_size = 64;
+    const int batch_size = 8;
 
     /// <summary>
     /// What is the maximum context length for predictions?
     /// </summary>
-    const int block_size = 256;
+    const int block_size = 64;
 
     /// <summary>
     /// Upper limit on the number of iterations (steps)
@@ -35,11 +35,13 @@ internal class Program
     const int eval_iters = 200;
 
     /// <summary>
-    /// Number of embedddings
+    /// Number of embeddings
     /// </summary>
     const int n_embd = 64 * 4;
 
-    const int n_layers = 6;
+    const int n_heads = 4;
+
+    const int n_layers = 3;
     
     const double dropout = 0.2;
 
@@ -86,7 +88,7 @@ internal class Program
         data[..1000].Dump();
         var n = (int)(0.9d * data.shape.TotalSize());
         var train_data = data[..n];
-        var val_data = data[n..]; // the 1000 characters we looked at earier will to the GPT look like this
+        var val_data = data[n..]; // the 1000 characters we looked at earlier will to the GPT look like this
         $"Split: {n}".Dump();
 
         train_data[..(block_size + 1)].Dump();
@@ -123,7 +125,7 @@ internal class Program
         //    }
         //}
 
-        var model = new BigramLanguageModel(vocab_size, n_embd, block_size, n_layers, dropout, device);
+        var model = new BigramLanguageModel(vocab_size, n_embd, block_size, n_layers, n_heads, dropout, device);
         model = model.to(device);
         var (logits, loss) = model.call(xb, yb);
         logits.shape.Dump();
@@ -182,6 +184,7 @@ internal class Program
     static Dictionary<string, float> estimate_loss(BigramLanguageModel model, Tensor train_data, Tensor val_data, string device)
     {
         using var _ = torch.no_grad();
+        using var __ = torch.NewDisposeScope();
         var output = new Dictionary<string, float>();
         model.eval();
         foreach (var split in new[] { "train", "val" })

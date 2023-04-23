@@ -11,7 +11,7 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
     private Sequential blocks;
     private Linear lm_head;
 
-    public BigramLanguageModel(int vocab_size, int n_embd, int block_size, int n_layer, double dropout, string device) : base(nameof(BigramLanguageModel))
+    public BigramLanguageModel(int vocab_size, int n_embd, int block_size, int n_layer, int n_heads, double dropout, string device) : base(nameof(BigramLanguageModel))
     {
         this.block_size = block_size;
         this.device = device;
@@ -21,7 +21,7 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
         this.position_embedding_table = nn.Embedding(block_size, n_embd);
 
         var layers = Enumerable.Range(0, n_layer)
-            .Select(layer => ("layer_" + layer, (nn.Module<Tensor, Tensor>)new Block(n_embd, n_heads: 4, block_size, dropout))) // cast each one so whole list is an enumerable of (string, Module<Tensor, Tensor>)
+            .Select(layer => ("layer_" + layer, (nn.Module<Tensor, Tensor>)new Block(n_embd, n_heads: n_heads, block_size, dropout))) // cast each one so whole list is an enumerable of (string, Module<Tensor, Tensor>)
             .Append(("norm", nn.LayerNorm(n_embd)));
         this.blocks = nn.Sequential(layers);
         this.lm_head = nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
