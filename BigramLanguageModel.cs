@@ -2,6 +2,7 @@
 {
     using TorchSharp;
     using TorchSharp.Modules;
+    using static TorchSharp.torch;
     using F = TorchSharp.torch.nn.functional;
 
     internal class BigramLanguageModel : torch.nn.Module<torch.Tensor, torch.Tensor?, (torch.Tensor logits, torch.Tensor? loss)>
@@ -24,7 +25,8 @@
             this.blocks = torch.nn.Sequential(
                 new Block(n_embd, n_heads: 4, block_size),
                 new Block(n_embd, n_heads: 4, block_size),
-                new Block(n_embd, n_heads: 4, block_size));
+                new Block(n_embd, n_heads: 4, block_size),
+                torch.nn.LayerNorm(n_embd));
             this.lm_head = torch.nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
             
             this.RegisterComponents();
