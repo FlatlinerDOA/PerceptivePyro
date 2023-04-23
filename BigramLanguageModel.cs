@@ -11,6 +11,7 @@
         private Embedding token_embedding_table;
         private Embedding position_embedding_table;
         private MultiHeadAttention sa_heads;
+        private FeedForward ffwd;
         private Linear lm_head;
 
         public BigramLanguageModel(int vocab_size, int n_embd, int block_size, string device) : base(nameof(BigramLanguageModel))
@@ -22,6 +23,7 @@
             this.token_embedding_table = torch.nn.Embedding(vocab_size, n_embd);
             this.position_embedding_table = torch.nn.Embedding(block_size, n_embd);
             this.sa_heads = new MultiHeadAttention(4, block_size, n_embd, n_embd/4).to(this.device); // i.e. 4 heads of 8-dimensional self-attention
+            this.ffwd = new FeedForward(n_embd);
             this.lm_head = torch.nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
             
             this.RegisterComponents();
@@ -36,6 +38,7 @@
             var pos_emb = this.position_embedding_table.call(torch.arange(T, device: this.device));
             var x = tok_emb + pos_emb; // (B, T, C)
             x = this.sa_heads.call(x); // Apply one head of self-attention. (B, T, C)
+            x = this.ffwd.call(x);
             var logits = this.lm_head.call(x); // (Batch, Time, vocab_size)
             
             if (targets is null)
