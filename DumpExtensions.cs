@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -20,7 +21,7 @@ namespace NanoGPTSharp
             float f => f.ToString("0.000"),
             double d => d.ToString("0.000"),
             ValueTuple v => "(" + ((dynamic)v).Item1.Stringify() + ", " + ((dynamic)v).Item2.Stringify() + ")",
-            Tensor t => "tensor(" + t.to("cpu").tolist().Stringify() + ")",
+            Tensor t => "tensor(" + t.ToString(TorchSharp.TensorStringStyle.Julia, null, 180) + ")",
             Scalar s => s.Stringify(),
             IEnumerable x => x.Stringify(),
             _ => ((object)item).ToString()
