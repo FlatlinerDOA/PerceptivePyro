@@ -6,19 +6,24 @@
 
     internal class BigramLanguageModel : torch.nn.Module<torch.Tensor, torch.Tensor?, (torch.Tensor logits, torch.Tensor? loss)>
     {
+        private readonly int block_size;
         private readonly string device;
         private Embedding token_embedding_table;
         private Embedding position_embedding_table;
+        private MultiHeadAttention sa_heads;
         private Linear lm_head;
 
         public BigramLanguageModel(int vocab_size, int n_embd, int block_size, string device) : base(nameof(BigramLanguageModel))
         {
+            this.block_size = block_size;
             this.device = device;
 
             // each token directly reads off the logits for the next token from a lookup table
             this.token_embedding_table = torch.nn.Embedding(vocab_size, n_embd);
             this.position_embedding_table = torch.nn.Embedding(block_size, n_embd);
+            this.sa_heads = new MultiHeadAttention(4, block_size, n_embd, n_embd/4).to(this.device); // i.e. 4 heads of 8-dimensional self-attention
             this.lm_head = torch.nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
+            
             this.RegisterComponents();
         }
 
@@ -29,7 +34,9 @@
             // index and targets are both (b, t) tensor of integers
             var tok_emb = this.token_embedding_table.call(idx); // (Batch, Time, Channel)
             var pos_emb = this.position_embedding_table.call(torch.arange(T, device: this.device));
-            var logits = this.lm_head.call(tok_emb); // (Batch, Time, vocab_size)
+            var x = tok_emb + pos_emb; // (B, T, C)
+            x = this.sa_heads.call(x); // Apply one head of self-attention. (B, T, C)
+            var logits = this.lm_head.call(x); // (Batch, Time, vocab_size)
             
             if (targets is null)
             {
@@ -52,8 +59,10 @@
             // idx is (B, T) array of indices
             foreach (var _ in Enumerable.Range(0, max_new_tokens))
             {
+                // crop idx to the last block_size tokens
+                var idx_cond = idx[.., ^this.block_size..];
                 // get the predictions
-                var (logits, __) = this.call(idx, null);
+                var (logits, __) = this.call(idx_cond, null);
                 // focus only on the last time step
                 logits = logits[.., -1, ..]; 
                 

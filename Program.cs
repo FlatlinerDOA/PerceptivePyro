@@ -19,7 +19,7 @@
         /// <summary>
         /// Upper limit on the number of iterations (steps)
         /// </summary>
-        const int max_iters = 30000;
+        const int max_iters = 5000;
         
         /// <summary>
         /// How many iterations or steps before we evaluate the metrics.
@@ -52,9 +52,8 @@
             // We always start with a dataset to train on. Let's download the tiny shakespeare dataset
             await DownloadDataSetAsync();
 
-            self_attention_explained();
-            return;
-
+            ////self_attention_explained();
+            
             // read it in to inspect it
             var text = await File.ReadAllTextAsync("input.txt");
             text.Length.Dump();
@@ -145,8 +144,8 @@
                 optimizer.step();
             }
 
-            var gen2 = model.generate(idx: torch.zeros(new[] { 1L, 1 }, dtype: torch.@long, device: device), max_new_tokens: 500);
-            decode(gen2[0].data<long>().Select(v => (int)v)).Dump();
+            var test_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
+            decode(model.generate(test_context, max_new_tokens: 2000)[0].data<long>().Select(v => (int)v)).Dump();
         }
 
         static void self_attention_explained()
