@@ -7,15 +7,15 @@
     internal class Program
     {
         /// <summary>
-        /// What is the maximum context length for predictions?
-        /// </summary>
-        const int block_size = 8;
-        
-        /// <summary>
         /// how many independent sequences will we process in parallel?
         /// </summary>
-        const int batch_size = 32;
-        
+        const int batch_size = 64;
+
+        /// <summary>
+        /// What is the maximum context length for predictions?
+        /// </summary>
+        const int block_size = 256;
+
         /// <summary>
         /// Upper limit on the number of iterations (steps)
         /// </summary>
@@ -24,12 +24,12 @@
         /// <summary>
         /// How many iterations or steps before we evaluate the metrics.
         /// </summary>
-        const int eval_interval = 300;
+        const int eval_interval = 500;
         
         /// <summary>
         /// Learning rate for gradients.
         /// </summary>
-        const double learning_rate = 1e-3;
+        const double learning_rate = 3e-4;
         
         /// <summary>
         /// How many steps should be dedicated to evaluation.
@@ -39,11 +39,11 @@
         /// <summary>
         /// Number of embedddings
         /// </summary>
-        const int n_embd = 32;
+        const int n_embd = 384;
 
-        const double dropout = 0.3;
+        const int n_layers = 6;
         
-        const int n_layers = 3;
+        const double dropout = 0.2;
 
         static async Task Main(string[] args)
         {
@@ -131,7 +131,7 @@
             logits.shape.Dump();
             loss.Dump();
 
-            var optimizer = torch.optim.AdamW(model.parameters(), lr: 1e-3);
+            var optimizer = torch.optim.AdamW(model.parameters(), lr: learning_rate);
             foreach (var iter in Enumerable.Range(0, max_iters))
             {
                 if (iter % eval_interval == 0)
