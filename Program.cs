@@ -18,17 +18,17 @@ internal class Program
     /// Upper limit on the number of iterations (steps)
     /// </summary>
     const int max_iters = 5000;
-    
+
     /// <summary>
     /// How many iterations or steps before we evaluate the metrics.
     /// </summary>
     const int eval_interval = 500;
-    
+
     /// <summary>
     /// Learning rate for gradients.
     /// </summary>
     const double learning_rate = 3e-4;
-    
+
     /// <summary>
     /// How many steps should be dedicated to evaluation.
     /// </summary>
@@ -42,12 +42,11 @@ internal class Program
     const int n_heads = 4;
 
     const int n_layers = 3;
-    
+
     const double dropout = 0.2;
 
     static async Task Main(string[] args)
     {
-
         var device = torch.cuda_is_available() ? "cuda" : "cpu";
         $"Running on {device}".Dump();
 
