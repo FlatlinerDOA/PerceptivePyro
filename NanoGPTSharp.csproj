@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="SharpToken" Version="1.0.27" />
     <PackageReference Include="TorchSharp" Version="0.99.4" />
     <PackageReference Include="TorchSharp-cuda-windows" Version="0.99.4" />
   </ItemGroup>

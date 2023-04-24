@@ -11,12 +11,6 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
-
-    /// <summary>
-    /// Attention heads
-    /// </summary>
-    private Block[] h;
-
     private Linear lm_head;
 
     internal GPT(GPTConfig config) : base(nameof(GPT))
@@ -30,12 +24,12 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         var wpe = nn.Embedding(config.block_size, config.n_embd);
         var drop = nn.Dropout(config.dropout);
         var ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
-        var h = (from _ in Enumerable.Range(0, config.n_layer) select new Block(config)).ToArray();
+        var h = nn.ModuleList((from _ in Enumerable.Range(0, config.n_layer) select new Block(config)).ToArray());
         this.transformer = nn.ModuleDict(
             ("wte", wte),
             ("wpe", wpe),
             ("drop", drop),
-            ("h", nn.ModuleList(h)),
+            ("h", h),
             ("ln_f", ln_f)
         );
 
@@ -71,6 +65,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
     private Dropout drop => (Dropout)this.transformer["drop"];
 
     private LayerNorm ln_f => (LayerNorm)this.transformer["ln_f"];
+    private ModuleList<Block> h => (ModuleList<Block>)this.transformer["h"];
 
     public static async Task<GPT> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
@@ -222,6 +217,51 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         }
     }
 
+
+    /// <summary>
+    /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
+    /// the sequence max_new_tokens times, feeding the predictions back into the model each time.
+    /// Most likely you'll want to make sure to be in model.eval() mode of operation for this.
+    /// </summary>
+    /// <param name="idx"></param>
+    /// <param name="max_new_tokens"></param>
+    /// <param name="temperature"></param>
+    /// <param name="top_k"></param>
+    /// <returns></returns>
+    public Tensor generate(Tensor idx, int max_new_tokens, double temperature = 1.0d, int? top_k = null) {
+        
+        using var no_grad = torch.no_grad();
+        foreach (var token in Enumerable.Range(0, max_new_tokens))
+        {
+            // if the sequence context is growing too long we must crop it at block_size
+            var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
+
+            // forward the model to get the logits for the index in the sequence
+            var (logits, _) = this.call(idx_cond, null);
+            
+            // pluck the logits at the final step and scale by desired temperature
+            logits = logits[.., -1, ..] / temperature;
+
+            // optionally crop the logits to only the top k options
+            if (top_k is int k)
+            {
+                var (v, _) = torch.topk(logits, Math.Min(k, (int)logits.size(-1)));
+                logits.masked_fill_(logits < v.index_select(1, new long[] { -1 }), float.NegativeInfinity);
+            }
+
+            // apply softmax to convert logits to (normalized) probabilities
+            var probs = F.softmax(logits, dim: -1);
+
+            // sample from the distribution
+            var idx_next = torch.multinomial(probs, num_samples: 1);
+
+            // append sampled index to the running sequence and continue
+            idx = torch.cat(new[] { idx, idx_next }, dim: 1);
+        }
+
+        return idx;
+    }
+
     private void _init_weights(nn.Module module)
     {
         if (module is Linear lin)
@@ -252,4 +292,5 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 
         return filePath;
     }
+
 }

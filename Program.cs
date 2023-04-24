@@ -1,5 +1,6 @@
 ﻿namespace NanoGPTSharp;
 
+using SharpToken;
 using F = nn.functional;
 
 internal class Program
@@ -52,11 +53,28 @@ internal class Program
 
         torch.manual_seed(1337);
 
+        device = "cpu";
         // Test loading a safe tensor.
         ////var tensors = SafeTensors.LoadFile(@".\models\model.safetensors", device);
 
         // Test loading of GPT2
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPT.from_pretrained("gpt2", "cpu");
+        gpt.eval();
+        gpt.to(device);
+
+        // Test GPT2 can do some inference
+
+        var prompt = """
+                     The quick brown fox
+                     """;
+
+        ///decode(gpt.generate(test_context, max_new_tokens: 2000)[0].data<long>().Select(v => (int)v)).Dump();
+        var encoding = GptEncoding.GetEncoding("r50k_base");
+
+        ////var gpt_context = torch.as_tensor(encoding.Encode(prompt));
+        var gpt_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
+
+        encoding.Decode(gpt.generate(gpt_context, max_new_tokens: 200)[0].data<long>().Select(v => (int)v).ToList()).Dump();
         return;
 
         // We always start with a dataset to train on. Let's download the tiny shakespeare dataset
