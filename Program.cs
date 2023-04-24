@@ -52,6 +52,13 @@ internal class Program
 
         torch.manual_seed(1337);
 
+        // Test loading a safe tensor.
+        ////var tensors = SafeTensors.LoadFile(@".\models\model.safetensors", device);
+
+        // Test loading of GPT2
+        var gpt = await GPT.from_pretrained("gpt2", device);
+        return;
+
         // We always start with a dataset to train on. Let's download the tiny shakespeare dataset
         await DownloadDataSetAsync();
 

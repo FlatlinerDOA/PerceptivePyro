@@ -7,18 +7,16 @@ using TorchSharp.Modules;
 using static Tensorboard.CostGraphDef.Types;
 using F = TorchSharp.torch.nn.functional;
 
-internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor loss)>
+internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
-    private Embedding wte;
-    private Embedding wpe;
-    private Dropout drop;
-    private LayerNorm ln_f;
+    private ModuleDict<nn.Module> transformer;
+
     /// <summary>
     /// Attention heads
     /// </summary>
     private Block[] h;
-    private ModuleDict<nn.Module> transformer;
+
     private Linear lm_head;
 
     internal GPT(GPTConfig config) : base(nameof(GPT))
@@ -28,18 +26,19 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor loss)>
 
         this.config = config;
 
-        this.wte = nn.Embedding(config.vocab_size, config.n_embd);
-        this.wpe = nn.Embedding(config.block_size, config.n_embd);
-        this.drop = nn.Dropout(config.dropout);
-        this.ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
-        this.h = (from _ in Enumerable.Range(0, config.n_layer) select new Block(config)).ToArray();
+        var wte = nn.Embedding(config.vocab_size, config.n_embd);
+        var wpe = nn.Embedding(config.block_size, config.n_embd);
+        var drop = nn.Dropout(config.dropout);
+        var ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
+        var h = (from _ in Enumerable.Range(0, config.n_layer) select new Block(config)).ToArray();
         this.transformer = nn.ModuleDict(
-            ("wte", this.wte),
-            ("wpe", this.wpe),
-            ("drop", this.drop),
-            ("h", nn.ModuleList(this.h)),
-            ("ln_f", this.ln_f)
+            ("wte", wte),
+            ("wpe", wpe),
+            ("drop", drop),
+            ("h", nn.ModuleList(h)),
+            ("ln_f", ln_f)
         );
+
         this.lm_head = nn.Linear(config.n_embd, config.vocab_size, hasBias: false);
 
         // with weight tying when using torch.compile() some warnings get generated:
@@ -65,17 +64,25 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor loss)>
         this.RegisterComponents();
     }
 
-    public static GPT from_pretrained(string model_type, GPTConfig override_args = null)
+    private Embedding wte => (Embedding)this.transformer["wte"];
+
+    private Embedding wpe => (Embedding)this.transformer["wpe"];
+
+    private Dropout drop => (Dropout)this.transformer["drop"];
+
+    private LayerNorm ln_f => (LayerNorm)this.transformer["ln_f"];
+
+    public static async Task<GPT> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
         Debug.WriteLine($"loading weights from pretrained: {model_type}");
 
         // n_layer, n_head and n_embd are determined from model_type
         var model_configs = new Dictionary<string, GPTConfig>()
         {
-            ["gpt2"] = new() { n_layer = 12, n_head = 12, n_embd = 768 },  // 124M params
+            ["gpt2"] = new() { n_layer = 12, n_head = 12, n_embd = 768 },         // 124M params
             ["gpt2-medium"] = new() { n_layer = 24, n_head = 16, n_embd = 1024 }, // 350M params
-            ["gpt2-large"] = new() { n_layer = 36, n_head = 20, n_embd = 1280 }, // 774M params
-            ["gpt2-xl"] = new() { n_layer = 48, n_head = 25, n_embd = 1600 }, // 1558M params
+            ["gpt2-large"] = new() { n_layer = 36, n_head = 20, n_embd = 1280 },  // 774M params
+            ["gpt2-xl"] = new() { n_layer = 48, n_head = 25, n_embd = 1600 },     // 1558M params
         };
 
         Contract.Assert(model_configs.ContainsKey(model_type), $"Invalid model_type: {model_type}");
@@ -95,34 +102,45 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor loss)>
         var sd = model.state_dict();
         var sd_keys = (from k in sd.Keys where !k.EndsWith(".attn.bias") select k); // discard this mask / buffer, not a param
 
+        // init a huggingface/transformers model
+        var safeTensorsFilePath = await DownloadDataSetAsync(model_type);
+        var sd_hf = from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
+                    where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
+                    select t;
 
-        /* TODO: Convert
-        # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
-        sd_hf = model_hf.state_dict()
+        // copy while ensuring all of the parameters are aligned and match in names and shapes
+        var transposed = new[] { "attn.c_attn.weight", "attn.c_proj.weight", "mlp.c_fc.weight", "mlp.c_proj.weight" };
 
-        # copy while ensuring all of the parameters are aligned and match in names and shapes
-        sd_keys_hf = sd_hf.keys()
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore these, just a buffer
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
-        transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
-        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
-        # this means that we have to transpose these weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
-        for k in sd_keys_hf:
-            if any(k.endswith(w) for w in transposed):
-                # special treatment for the Conv1D weights we need to transpose
-                assert sd_hf[k].shape[::-1] == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k].t())
-            else:
-                # vanilla copy over the other parameters
-                assert sd_hf[k].shape == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k])
+        // basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
+        // this means that we have to transpose these weights when we import them
+        ////Contract.Assert(sd_keys_hf.Count() == sd_keys.Count(), $"mismatched keys: {sd_keys_hf.Count()} != {sd_keys.Count()}");
+        // Stream tensors into the the dictionary.
+        foreach (var (name, source) in sd_hf)
+        {
+            // HACK: Translate names.
+            var target = sd.GetValueOrDefault(name) ?? sd.GetValueOrDefault("transformer." + name);
+            Contract.Assert(target is not null, $"Could not find matching tensor for {name}");
+            if (transposed.Any(name.EndsWith))
+            {
+                // special treatment for the Conv1D weights we need to transpose
+                Contract.Assert(source.shape.Reverse().SequenceEqual(target.shape));
+                using (var _ = torch.no_grad())
+                {
+                    target.copy_(source.t());
+                }
+            }
+            else
+            {
+                // vanilla copy over the other parameters
+                Contract.Assert(source.shape.SequenceEqual(target.shape), $"Size of loaded tensor {name}: ({source.shape.Stringify()}) does not match configured ({target.shape.Stringify()})");
+                using (var _ = torch.no_grad())
+                {
+                    target.copy_(source);
+                }
+            }
+        }
 
-        return model
-        */
+        return model;        
     }
 
     public override (Tensor, Tensor?) forward(Tensor idx, Tensor? targets = null)
@@ -218,5 +236,20 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor loss)>
         {
             nn.init.normal_(e.weight, mean: 0.0, std: 0.02);
         }
+    }
+
+    static async Task<string> DownloadDataSetAsync(string model)
+    {
+        var filePath = $@".\models\{model}\model.safetensors";
+        if (File.Exists(filePath))
+        {
+            return filePath;
+        }
+
+        var stream = await new HttpClient().GetStreamAsync($"https://huggingface.co/{model}/resolve/main/model.safetensors");
+        using var outputStream = File.OpenWrite(filePath);
+        await stream.CopyToAsync(outputStream);
+
+        return filePath;
     }
 }

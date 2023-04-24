@@ -14,6 +14,10 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
     public double dropout;
     public bool hasFlash;
 
+    public CausalSelfAttention(GPTConfig config) : this(config.n_embd, config.n_head, config.block_size, config.dropout, config.has_bias)
+    {
+    }
+
     public CausalSelfAttention(int n_embd, int n_head, int block_size, double dropout, bool hasBias) : base(nameof(CausalSelfAttention))
     {
         Debug.Assert(n_embd % n_head == 0, "n_embd must be an even multiple of n_head");
@@ -25,8 +29,8 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         this.n_head = n_head;
         this.n_embd = n_embd;
         this.dropout = dropout;
-        // lash attention make GPU go brrrrr but support is only in PyTorch >= 2.0
-        this.hasFlash = typeof(nn.functional).GetMember("scaled_dot_product_attention") != null;
+        // flash attention make GPU go brrrrr but support is only in PyTorch >= 2.0
+        this.hasFlash = typeof(nn.functional).GetMember("scaled_dot_product_attention").Length != 0;
         if (!this.hasFlash)
         {
             Debug.WriteLine("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0");
@@ -39,6 +43,9 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         this.RegisterComponents();
     }
 
+    /// <summary>
+    /// Gets or sets the bias buffer.
+    /// </summary>
     public Tensor bias
     {
         get => this.get_buffer("bias");
@@ -57,7 +64,7 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         Tensor y;
         if (this.hasFlash)
         {
-            // TODO: Add this whne TorchSharp upgrades to 2.0
+            // TODO: Add this when TorchSharp upgrades to 2.0
             throw new Exception("Adopt flash attention support now!");
         }
         else

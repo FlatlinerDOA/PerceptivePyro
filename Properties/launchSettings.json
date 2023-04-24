@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NanoGPTSharp": {
+      "commandName": "Project",
+      "workingDirectory": "."
+    }
+  }
+}
