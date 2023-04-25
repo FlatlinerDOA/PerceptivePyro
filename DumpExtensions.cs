@@ -1,6 +1,8 @@
-﻿
-namespace NanoGPTSharp;
+﻿namespace NanoGPTSharp;
 
+/// <summary>
+/// LINQPad style dump extensions for "stringify" nicely and printing out to the console.
+/// </summary>
 internal static class DumpExtensions
 {
     internal static string Stringify(this object? item) => item switch
@@ -14,7 +16,7 @@ internal static class DumpExtensions
         Tensor t => "tensor(" + t.ToString(TorchSharp.TensorStringStyle.Julia, null, 180) + ")",
         Scalar s => s.Stringify(),
         IEnumerable x => x.Stringify(),
-        _ => ((object)item).ToString()
+        _ => ((object)item)?.ToString() ?? "<null>"
     };
 
     internal static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
@@ -34,7 +36,7 @@ internal static class DumpExtensions
             ScalarType.Byte => item.ToByte().ToString(),
             ScalarType.Int8 => item.ToByte().ToString(),
             ScalarType.Bool => item.ToBoolean().ToString(),
-            _ => item.ToString(),
+            _ => item.ToString() ?? "<null>",
         };
 
     internal static T Dump<T>(this T item)

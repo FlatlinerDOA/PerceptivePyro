@@ -2,6 +2,7 @@
   "profiles": {
     "NanoGPTSharp": {
       "commandName": "Project",
+      "commandLineArgs": "gpt2_large_unconditioned",
       "workingDirectory": "."
     }
   }

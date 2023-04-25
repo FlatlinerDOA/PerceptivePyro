@@ -1,251 +1,54 @@
 ﻿namespace NanoGPTSharp;
 
-using SharpToken;
-using F = nn.functional;
+using NanoGPTSharp.Examples;
+using System;
 
 internal class Program
 {
-    /// <summary>
-    /// how many independent sequences will we process in parallel?
-    /// </summary>
-    const int batch_size = 8;
+    const string Help =
+        """
+        This is just a bunch of examples of using transformer architecture all using pure C# and torch:
 
-    /// <summary>
-    /// What is the maximum context length for predictions?
-    /// </summary>
-    const int block_size = 64;
+        Examples are:
 
-    /// <summary>
-    /// Upper limit on the number of iterations (steps)
-    /// </summary>
-    const int max_iters = 5000;
+        gpt2_unconditioned - Generates unconditioned random musings by GPT2 - 124M parameter model
+        gpt2_large_unconditioned - Generates unconditioned random musings by GPT2 - Large parameters
+        gpt2_prompted - Generates a prompted response from GPT2
+        gpt3_token_counts - Counts some tokens using GPT3 encoding
+        gpt4_token_counts - Counts some tokens using GPT4 encoding
+        safetensors - Test code for loading .safetensors files
+        training_shakespeare - Training a small language model on Shakespeare. (CUDA GPU with 10gb or more RAM required)
 
-    /// <summary>
-    /// How many iterations or steps before we evaluate the metrics.
-    /// </summary>
-    const int eval_interval = 500;
-
-    /// <summary>
-    /// Learning rate for gradients.
-    /// </summary>
-    const double learning_rate = 3e-4;
-
-    /// <summary>
-    /// How many steps should be dedicated to evaluation.
-    /// </summary>
-    const int eval_iters = 200;
-
-    /// <summary>
-    /// Number of embeddings
-    /// </summary>
-    const int n_embd = 64 * 4;
-
-    const int n_heads = 4;
-
-    const int n_layers = 3;
-
-    const double dropout = 0.2;
+        """;
 
     static async Task Main(string[] args)
     {
-        var device = torch.cuda_is_available() ? "cuda" : "cpu";
-        $"Running on {device}".Dump();
-
-        torch.manual_seed(1337);
-
-        device = "cpu";
-        // Test loading a safe tensor.
-        ////var tensors = SafeTensors.LoadFile(@".\models\model.safetensors", device);
-
-        // Test loading of GPT2
-        var gpt = await GPT.from_pretrained("gpt2", "cpu");
-        gpt.eval();
-        gpt.to(device);
-
-        // Test GPT2 can do some inference
-
-        var prompt = """
-                     The quick brown fox
-                     """;
-
-        ///decode(gpt.generate(test_context, max_new_tokens: 2000)[0].data<long>().Select(v => (int)v)).Dump();
-        var encoding = GptEncoding.GetEncoding("r50k_base");
-
-        ////var gpt_context = torch.as_tensor(encoding.Encode(prompt));
-        var gpt_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
-
-        encoding.Decode(gpt.generate(gpt_context, max_new_tokens: 200)[0].data<long>().Select(v => (int)v).ToList()).Dump();
-        return;
-
-        // We always start with a dataset to train on. Let's download the tiny shakespeare dataset
-        await DownloadDataSetAsync();
-
-        ////self_attention_explained();
-        
-        // read it in to inspect it
-        var text = await File.ReadAllTextAsync("input.txt");
-        text.Length.Dump();
-
-        // let's look at the first 1000 characters
-        text.Substring(0, 1000).Dump();
-
-
-        // here are all the unique characters that occur in this text
-        var chars = text.ToHashSet().Order().ToArray();
-        var vocab_size = chars.Length;
-        string.Join("", chars).Dump();
-        vocab_size.Dump();
-
-        // create a mapping from characters to integers
-        var stoi = chars.Select((c, i) => (c, i)).ToDictionary(_ => _.c, _ => _.i);
-        var itos = chars.Select((c, i) => (c, i)).ToDictionary(_ => _.i, _ => _.c);
-        var encode = (string s) => s.Select(c => stoi[c]).ToArray();
-        var decode = (IEnumerable<int> i) => string.Concat(i.Select(x => itos[x]));
-
-        // let's now encode the entire text dataset and store it into a torch.Tensor
-        encode("hii there").Dump();
-        decode(encode("hii there")).Dump();
-
-        // let's now encode the entire text dataset and store it into a torch.Tensor
-        var data = torch.tensor(encode(text), dtype: torch.@long);
-        (data.shape.TotalSize(), data.dtype).Dump();
-        data[..1000].Dump();
-        var n = (int)(0.9d * data.shape.TotalSize());
-        var train_data = data[..n];
-        var val_data = data[n..]; // the 1000 characters we looked at earlier will to the GPT look like this
-        $"Split: {n}".Dump();
-
-        train_data[..(block_size + 1)].Dump();
-
-
-        var x = train_data[..block_size];
-        var y = train_data[1..(block_size + 1)];
-        //foreach (var t in Enumerable.Range(0, block_size))
-        //{
-        //    var context = x[..(t + 1)];
-        //    var target = y[t];
-        //    $"when input is {context.Stringify()} the target: {target.Stringify()}".Dump();
-        //}
-
-
-
-        var (xb, yb) = get_batch(train_data, val_data, "train", device);
-        "inputs:".Dump();
-        xb.shape.Dump();
-        xb.Dump();
-        "targets:".Dump();
-        yb.shape.Dump();
-        yb.Dump();
-
-        "-----".Dump();
-
-        //foreach (var b in Enumerable.Range(0, batch_size))
-        //{
-        //    foreach (var t in Enumerable.Range(0, block_size))
-        //    {
-        //        var context = xb[b, ..(t + 1)];
-        //        var target = yb[b,t];
-        //        $"when input is {context.tolist().Stringify()} the target: {target.tolist().Stringify()}".Dump();
-        //    }
-        //}
-
-        var model = new BigramLanguageModel(vocab_size, n_embd, block_size, n_layers, n_heads, dropout, device);
-        model = model.to(device);
-        var (logits, loss) = model.call(xb, yb);
-        logits.shape.Dump();
-        loss.Dump();
-
-        var optimizer = torch.optim.AdamW(model.parameters(), lr: learning_rate);
-        foreach (var iter in Enumerable.Range(0, max_iters))
+        Task action = args.FirstOrDefault() switch
         {
-            if (iter % eval_interval == 0)
-            {
-                var est = estimate_loss(model, train_data, val_data, device);
-                $"step {iter}: train loss {est["train"]:0.0000}, val loss {est["val"]:0.0000}".Dump();
-            }
+            "gpt2_unconditioned" => GPTExamples.Gpt2_124M_Unconditioned(),
+            "gpt2_large_unconditioned" => GPTExamples.Gpt2_Large_Unconditioned(),
+            "gpt2_prompted" => GPTExamples.Gpt2_124m_Prompted(),
+            "gpt2_large_prompted" => GPTExamples.Gpt2_Large_Prompted(),
+            "gpt3_token_counts" => GPTExamples.Gpt3TokenCounts(),
+            "gpt4_token_counts" => GPTExamples.Gpt4TokenCounts(),
+            "safetensors" => SafeTensorsExamples.LoadingSafeTensors(),
+            "training_shakespeare" => BigramLanguageModelExamples.TrainingOnShakespeare(),
+            _ => ShowHelp()
+        };
 
-            ////using var scope = torch.NewDisposeScope();
-            var (train_xb, train_yb) = get_batch(train_data, val_data, "train", device);
-            var (train_logits, train_loss) = model.call(train_xb, train_yb);
-            optimizer.zero_grad();
-            train_loss!.backward();
-            optimizer.step();
-        }
-
-        var test_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
-        decode(model.generate(test_context, max_new_tokens: 2000)[0].data<long>().Select(v => (int)v)).Dump();
-    }
-
-    static void self_attention_explained()
-    {
-        // Self attention - we are attending to our ourselves (in this case the x input).
-        // Cross attention - we are attending to data from elsewhere.
-        var (B, T, C) = (4, 8, 32); // batch, time, channels
-        var x = torch.randn(B, T, C); // some random test input data.
-
-        const int head_size = 16;
-        var key = torch.nn.Linear(C, head_size, hasBias: false); // Content of the character in question.
-        var query = torch.nn.Linear(C, head_size, hasBias: false); // What we are looking for.
-        var value = torch.nn.Linear(C, head_size, hasBias: false); // What do I bring to the table?
-        var k = key.call(x);
-        var q = query.call(x);
-
-        var wei = q.matmul(k.transpose(-2, -1)); // (B, T, 16) @ (B, 16, T) ---> (B, T, T)
-        //var wei = torch.zeros(new long[] { T, T }); // start wei with 2d matrix of zeroes (T, T).
-
-        var tril = torch.tril(torch.ones(T, T)); // triangular matrix of 1's for time so that the past see the future.
-        wei = wei.masked_fill(tril == 0, float.NegativeInfinity); // mask fill wei, with the zeroes from tril replaced with -Inf. This gives wei 0's and -Inf in a triangle.
-        wei = F.softmax(wei, dim: -1); // Softmax replaces -Inf with 0 and weights the zeroes evenly distributed by row.
-
-        wei.Dump();
-
-        var v = value.call(x);
-        var output = wei.matmul(v);
-        output.shape.Dump();
-        output.Dump();
-    }
-
-    static Dictionary<string, float> estimate_loss(BigramLanguageModel model, Tensor train_data, Tensor val_data, string device)
-    {
-        using var _ = torch.no_grad();
-        using var __ = torch.NewDisposeScope();
-        var output = new Dictionary<string, float>();
-        model.eval();
-        foreach (var split in new[] { "train", "val" })
+        try
         {
-            var losses = torch.zeros(eval_iters);
-            foreach (var k in Enumerable.Range(0, eval_iters))
-            {
-                var (x, y) = get_batch(train_data, val_data, split, device);
-                var (logits, loss) = model.call(x, y);
-                losses[k] = loss.item<float>();
-            }
-
-            output[split] = losses.mean().item<float>();
+            await action;
         }
-
-        model.train();
-        return output;
-    }
-
-    static (Tensor x, Tensor y) get_batch(Tensor train_data, Tensor val_data, string split, string device)
-    {
-        // generate a small batch of data of inputs x and targets y
-        var data = split == "train" ? train_data : val_data;
-        var ix = torch.randint((int)data.shape[0] - block_size, new int[] { batch_size });
-        var x = torch.stack(ix.data<long>().Select(i => data[(int)i .. ((int)i + block_size)]));
-        var y = torch.stack(ix.data<long>().Select(i => data[((int)i + 1)..((int)i + block_size + 1)]));
-        return (x.to(device), y.to(device));
-    }
-
-    static async Task DownloadDataSetAsync()
-    {
-        if (File.Exists("input.txt"))
+        catch(Exception ex) 
         {
-            return;
+            ex.Dump();
         }
+    }
 
-        var response = await new HttpClient().GetStringAsync("https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt");
-        await File.WriteAllTextAsync("input.txt", response);
+    private static Task ShowHelp()
+    {
+        Help.Dump();
+        return Task.CompletedTask;
     }
 }

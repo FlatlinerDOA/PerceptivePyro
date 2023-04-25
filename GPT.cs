@@ -69,8 +69,6 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 
     public static async Task<GPT> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
-        Debug.WriteLine($"loading weights from pretrained: {model_type}");
-
         // n_layer, n_head and n_embd are determined from model_type
         var model_configs = new Dictionary<string, GPTConfig>()
         {
@@ -83,7 +81,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         Contract.Assert(model_configs.ContainsKey(model_type), $"Invalid model_type: {model_type}");
         var config = model_configs[model_type];
 
-        Debug.WriteLine("forcing vocab_size=50257, block_size=1024, bias=True");
+        // forcing vocab_size=50257, block_size=1024, bias=True
         config = config with
         {
             vocab_size = 50257, // always 50257 for GPT model checkpoints
@@ -135,6 +133,8 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             }
         }
 
+        // Default to inference mode for most use cases.
+        model.eval();
         return model;        
     }
 
@@ -233,6 +233,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
+
             // if the sequence context is growing too long we must crop it at block_size
             var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
 
@@ -278,19 +279,19 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         }
     }
 
-    static async Task<string> DownloadDataSetAsync(string model)
+    private static async Task<string> DownloadDataSetAsync(string model)
     {
-        var filePath = $@".\models\{model}\model.safetensors";
+        var filePath = Path.GetFullPath($@".\models\{model}\model.safetensors");
         if (File.Exists(filePath))
         {
             return filePath;
         }
 
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        $"Downloading weights from pretrained {model} to {filePath}".Dump();
         var stream = await new HttpClient().GetStreamAsync($"https://huggingface.co/{model}/resolve/main/model.safetensors");
         using var outputStream = File.OpenWrite(filePath);
         await stream.CopyToAsync(outputStream);
-
         return filePath;
     }
-
 }
