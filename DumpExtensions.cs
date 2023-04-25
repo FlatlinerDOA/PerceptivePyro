@@ -13,14 +13,14 @@ internal static class DumpExtensions
         float f => f.ToString("0.000"),
         double d => d.ToString("0.000"),
         ValueTuple v => "(" + ((dynamic)v).Item1.Stringify() + ", " + ((dynamic)v).Item2.Stringify() + ")",
-        Tensor t => "tensor(" + t.ToString(TorchSharp.TensorStringStyle.Julia, null, 180) + ")",
+        Tensor t => "tensor(" + t.ToString(TorchSharp.TensorStringStyle.Numpy, "0.0000", 62) + ")",
         Scalar s => s.Stringify(),
         IEnumerable x => x.Stringify(),
         _ => ((object)item)?.ToString() ?? "<null>"
     };
 
     internal static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
-
+ 
     internal static string Stringify(this TorchSharp.Scalar item) =>
         item.Type switch
         {

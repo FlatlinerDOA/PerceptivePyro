@@ -7,7 +7,7 @@ internal class GPTExamples
     public static async Task Gpt2_124M_Unconditioned()
     {
         // Fix the randomness in place.
-        torch.manual_seed(1337);
+        set_seed(1337);
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
@@ -29,7 +29,7 @@ internal class GPTExamples
     public static async Task Gpt2_Large_Unconditioned()
     {
         // Fix the randomness in place.
-        torch.manual_seed(1337);
+        set_seed(1337);
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
@@ -52,7 +52,7 @@ internal class GPTExamples
     public static async Task Gpt2_124m_Prompted()
     {
         // Fix the randomness in place.
-        torch.manual_seed(42);
+        set_seed(1337);
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
@@ -65,7 +65,7 @@ internal class GPTExamples
     public static async Task Gpt2_Large_Prompted()
     {
         // Fix the randomness in place.
-        torch.manual_seed(42);
+        set_seed(1337);
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
@@ -108,13 +108,23 @@ internal class GPTExamples
     private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
-        var encoded_prompt = encoding.Encode(prompt);
+        var encoded_prompt = encoding.Encode(prompt, new HashSet<string>() { "<|endoftext|>" });
         var gpt_context = torch.as_tensor(encoded_prompt, dtype: @long, device: device).reshape(1, encoded_prompt.Count);
-
+        gpt_context.Dump();
         for (int i = 0; i < num_return_sequences; i++)
         {
-            var output = gpt.generate(gpt_context, max_new_tokens: max_length);
+            var output = gpt.generate(gpt_context, max_new_tokens: max_length, temperature: 0.8d, top_k: 200);
+            output.Dump();
             yield return encoding.Decode(output[0].data<long>().Select(v => (int)v).ToList());      
         }
+    }
+
+    private static void set_seed(int seed)
+    {
+        torch.manual_seed(seed);
+        torch.cuda.manual_seed(seed);
+        torch.random.manual_seed(seed);
+        torch.backends.cuda.matmul.allow_tf32 = true; // allow tf32 on matmul
+        torch.backends.cudnn.allow_tf32 = true; // allow tf32 on cudnn
     }
 }

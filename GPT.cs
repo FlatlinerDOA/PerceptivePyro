@@ -54,9 +54,10 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             }
         }
 
+        this.RegisterComponents();
+
         // report number of parameters
         Debug.WriteLine($"number of parameters: {this.get_num_params() / 1e6}M");
-        this.RegisterComponents();
     }
 
     private Embedding wte => (Embedding)this.transformer["wte"];
@@ -94,33 +95,39 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         // create a from-scratch initialized minGPT model
         var model = new GPT(config);
         var sd = model.state_dict();
-        var sd_keys = (from k in sd.Keys where !k.EndsWith(".attn.bias") select k); // discard this mask / buffer, not a param
+        var sd_keys = (from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv); // discard this mask / buffer, not a param
 
         // init a huggingface/transformers model
         var safeTensorsFilePath = await DownloadDataSetAsync(model_type);
-        var sd_hf = from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
+        var sd_hf = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
                     where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
-                    select t;
-
-        // copy while ensuring all of the parameters are aligned and match in names and shapes
-        var transposed = new[] { "attn.c_attn.weight", "attn.c_proj.weight", "mlp.c_fc.weight", "mlp.c_proj.weight" };
+                    select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
 
         // basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
-        // this means that we have to transpose these weights when we import them
-        ////Contract.Assert(sd_keys_hf.Count() == sd_keys.Count(), $"mismatched keys: {sd_keys_hf.Count()} != {sd_keys.Count()}");
+        // this means that we have to transpose these weights when we import them.
+        var transposed = new[] { "attn.c_attn.weight", "attn.c_proj.weight", "mlp.c_fc.weight", "mlp.c_proj.weight" };
+
+        // copy while ensuring all of the parameters are aligned and match in names and shapes (NOTE: In the .safetensors lm_head.weight is not stored as it is the same as wte.weight (they are tied)
+        Contract.Assert(sd_hf.Keys.Count() + 1 == sd_keys.Count(), $"mismatched keys: {sd_hf.Keys.Count() + 1} != {sd_keys.Count()}");
+
         // Stream tensors into the the dictionary.
-        foreach (var (name, source) in sd_hf)
+        foreach (var (name, target) in sd_keys)
         {
             // HACK: Translate names.
-            var target = sd.GetValueOrDefault(name) ?? sd.GetValueOrDefault("transformer." + name);
-            Contract.Assert(target is not null, $"Could not find matching tensor for {name}");
+            var translated_name = name.StartsWith("transformer.") ? name.Substring("transformer.".Length) :
+                name == "lm_head.weight" ? "wte.weight" :
+                name;
+            var source = sd_hf.GetValueOrDefault(translated_name);
+            Contract.Assert(source is not null, $"Could not find matching tensor for {name} ({translated_name})");
             if (transposed.Any(name.EndsWith))
             {
                 // special treatment for the Conv1D weights we need to transpose
-                Contract.Assert(source.shape.Reverse().SequenceEqual(target.shape));
+                Contract.Assert(source.shape.Reverse().SequenceEqual(target.shape), "Shape's not right");
                 using (var _ = torch.no_grad())
                 {
                     target.copy_(source.t());
+                    //$"Transposed {name} {target.shape.Stringify()}".Dump();
+                    //target.Dump();
                 }
             }
             else
@@ -130,6 +137,8 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
                 using (var _ = torch.no_grad())
                 {
                     target.copy_(source);
+                    //$"Loaded {name} {target.shape.Stringify()}".Dump();
+                    //target.Dump();
                 }
             }
         }
@@ -153,8 +162,9 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         foreach (var block in this.h)
         {
             x = block.call(x);
-            x = this.ln_f.call(x);
         }
+
+        x = this.ln_f.call(x);
 
         Tensor logits;
         Tensor? loss;
@@ -172,6 +182,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             logits = lm_head.forward(x_narrowed); // note: using list [-1] to preserve the time dim
             loss = null;
         }
+
 
         return (logits, loss);
     }
@@ -218,7 +229,6 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         }
     }
 
-
     /// <summary>
     /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     /// the sequence max_new_tokens times, feeding the predictions back into the model each time.
@@ -234,6 +244,8 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
+            $"Step {token}".Dump();
+
             // if the sequence context is growing too long we must crop it at block_size
             using var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
 
@@ -246,13 +258,17 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             // optionally crop the logits to only the top k options
             if (top_k is int k)
             {
-                var (v, _) = torch.topk(logits, Math.Min(k, (int)logits.size(-1)));
-                logits.masked_fill_(logits < v.index_select(1, new long[] { -1 }), float.NegativeInfinity);
+                var top = Math.Min(k, (int)logits.size(-1));
+                var (v, top_indexes) = torch.topk(logits, top);
+                var lowest = v[.., -1].reshape(1, 1);
+                ////lowest.Dump();
+                logits.masked_fill_(logits < lowest, float.NegativeInfinity);
+                ////logits.ToString(TorchSharp.TensorStringStyle.Julia, "0.00", 520000).Dump();
             }
 
             // apply softmax to convert logits to (normalized) probabilities
             using var probs = F.softmax(logits, dim: -1);
-
+            
             // sample from the distribution
             using var idx_next = torch.multinomial(probs, num_samples: 1);
 

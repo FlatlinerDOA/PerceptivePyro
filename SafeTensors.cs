@@ -44,7 +44,10 @@ internal static class SafeTensors
         var metadataJson = Encoding.UTF8.GetString(metadataBytes);
 
         Contract.Assert(metadataJson != null, "Invalid .safetensors file, metadata is null");
-        var metadata = JsonSerializer.Deserialize<Dictionary<string, SafeTensorMetadata>>(metadataJson);
+        var doc = JsonDocument.Parse(metadataJson);
+        var metadata = from e in doc.RootElement.EnumerateObject()
+                    select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
+        ////var metadata = JsonSerializer.Deserialize<IEnumerable<(string Name, SafeTensorMetadata Metadata)>(metadataJson);
 
         var result = new Dictionary<string, Tensor>();
         
@@ -70,8 +73,10 @@ internal static class SafeTensors
         var metadataJson = Encoding.UTF8.GetString(metadataBytes);
 
         Contract.Assert(metadataJson != null, "Invalid .safetensors file, metadata is null");
-        var metadata = JsonSerializer.Deserialize<Dictionary<string, SafeTensorMetadata>>(metadataJson);
-        return metadata.OrderBy(m => m.Value.data_offsets?[0] ?? 0).Select(m => (m.Key, m.Value));
+        var doc = JsonDocument.Parse(metadataJson);
+        var metadata = from e in doc.RootElement.EnumerateObject()
+                       select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
+        return metadata.OrderBy(m => m.Value.data_offsets?[0] ?? 0);
     }
 
     public static Tensor CreateTensor(BinaryReader reader, SafeTensorMetadata info, int offset, string device)
