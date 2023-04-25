@@ -40,6 +40,7 @@ internal class GPTExamples
 
         // Start with a single empty token as the starting context, so that GPT2 can get creative with what comes next.
         var gpt_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
+        $"Context Shape: {gpt_context.shape.Stringify()}".Dump();
 
         // Run the prediction for up to 200 tokens.
         var raw_output = gpt.generate(gpt_context, max_new_tokens: 200);
@@ -104,10 +105,11 @@ internal class GPTExamples
         gpt.train();
     }
 
-    private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 5, string device = "cpu")
+    private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
-        var gpt_context = torch.as_tensor(encoding.Encode(prompt), dtype: @long, device: device);
+        var encoded_prompt = encoding.Encode(prompt);
+        var gpt_context = torch.as_tensor(encoded_prompt, dtype: @long, device: device).reshape(1, encoded_prompt.Count);
 
         for (int i = 0; i < num_return_sequences; i++)
         {

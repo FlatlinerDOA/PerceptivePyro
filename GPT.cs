@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using TorchSharp.Modules;
+using static System.Reflection.Metadata.BlobBuilder;
 using static Tensorboard.CostGraphDef.Types;
 using F = TorchSharp.torch.nn.functional;
 
@@ -233,13 +234,12 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
-
             // if the sequence context is growing too long we must crop it at block_size
-            var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
+            using var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
 
             // forward the model to get the logits for the index in the sequence
             var (logits, _) = this.call(idx_cond, null);
-            
+
             // pluck the logits at the final step and scale by desired temperature
             logits = logits[.., -1, ..] / temperature;
 
@@ -251,10 +251,10 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             }
 
             // apply softmax to convert logits to (normalized) probabilities
-            var probs = F.softmax(logits, dim: -1);
+            using var probs = F.softmax(logits, dim: -1);
 
             // sample from the distribution
-            var idx_next = torch.multinomial(probs, num_samples: 1);
+            using var idx_next = torch.multinomial(probs, num_samples: 1);
 
             // append sampled index to the running sequence and continue
             idx = torch.cat(new[] { idx, idx_next }, dim: 1);
