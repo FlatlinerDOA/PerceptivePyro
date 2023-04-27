@@ -16,12 +16,25 @@ public class SEANetEncoder : Module<Tensor, Tensor>
     private int hop_length;
     private Sequential model;
 
-    public SEANetEncoder(int channels = 1, int dimension = 128, int n_filters = 32, int n_residual_layers = 1,
-                         List<int> ratios = null, string activation = "ELU", Dictionary<string, object> activation_params = null,
-                         string norm = "weight_norm", Dictionary<string, object> norm_params = null, int kernel_size = 7,
-                         int last_kernel_size = 7, int residual_kernel_size = 3, int dilation_base = 2, bool causal = false,
-                         string pad_mode = "reflect", bool true_skip = false, int compress = 2, int lstm = 2)
-        : base("SEANetEncoder")
+    public SEANetEncoder(int channels = 1,
+        int dimension = 128,
+        int n_filters = 32,
+        int n_residual_layers = 1,
+        List<int>? ratios = null,
+        string activation = "ELU",
+        Dictionary<string, object>? activation_params = null,
+        string norm = "weight_norm",
+        Dictionary<string, object>? norm_params = null,
+        int kernel_size = 7,
+        int last_kernel_size = 7,
+        int residual_kernel_size = 3,
+        int dilation_base = 2,
+        bool causal = false,
+        PaddingModes pad_mode = PaddingModes.Reflect,
+        bool true_skip = false,
+        int compress = 2,
+        int lstm = 2)
+        : base(nameof(SEANetEncoder))
     {
         this.channels = channels;
         this.dimension = dimension;
@@ -36,13 +49,13 @@ public class SEANetEncoder : Module<Tensor, Tensor>
         }
 
         // The activation function
-        var act = get_activation(activation, activation_params);
+        var act = activation.get_activation(activation_params);
 
         int mult = 1;
-        var modelLayers = new List<Module>();
+        var modelLayers = new List<Module<Tensor, Tensor>>();
 
         // Add the first convolution layer
-        modelLayers.Add(new SConv1d(channels, mult * n_filters, kernel_size, norm, norm_params, causal, pad_mode));
+        modelLayers.Add(new SConv1d(channels, mult * n_filters, kernel_size, norm: norm, norm_params: norm_params, causal: causal, pad_mode: pad_mode));
 
         // Downsample to raw audio scale
         for (int i = 0; i < this.ratios.Count; i++)
@@ -59,7 +72,7 @@ public class SEANetEncoder : Module<Tensor, Tensor>
 
             // Add downsampling layers
             modelLayers.Add(act);
-            modelLayers.Add(new SConv1d(mult * n_filters, mult * n_filters * 2, ratio * 2, ratio, norm, norm_params, causal, pad_mode));
+            modelLayers.Add(new SConv1d(mult * n_filters, mult * n_filters * 2, ratio * 2, ratio, norm: norm, norm_params: norm_params, causal: causal, pad_mode: pad_mode));
 
             mult *= 2;
         }
@@ -70,9 +83,9 @@ public class SEANetEncoder : Module<Tensor, Tensor>
         }
 
         modelLayers.Add(act);
-        modelLayers.Add(new SConv1d(mult * n_filters, dimension, last_kernel_size, norm, norm_params, causal, pad_mode));
+        modelLayers.Add(new SConv1d(mult * n_filters, dimension, last_kernel_size, norm: norm, norm_params: norm_params, causal: causal, pad_mode: pad_mode));
 
-        this.model = Sequential(modelLayers.ToArray());
+        this.model = nn.Sequential(modelLayers.ToArray());
         this.RegisterComponents();
     }
 
@@ -80,17 +93,5 @@ public class SEANetEncoder : Module<Tensor, Tensor>
     {
         return this.model.forward(x);
     }
-
-    private Module get_activation(string activation, Dictionary<string, object> activation_params)
-    {
-        switch (activation)
-        {
-            case "ELU":
-                return new ELU((double)activation_params["alpha"]);
-            // Add more activation functions as needed.
-            default:
-                throw new ArgumentException($"Unsupported activation function");
-        }
-    }
 }
-    
+

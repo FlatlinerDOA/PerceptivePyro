@@ -93,8 +93,8 @@ internal class EncodecModel : nn.Module<Tensor, Tensor>
         var (_, channels, length) = (x.shape[0], x.shape[1], (int)x.shape[2]);
         Contract.Assert(channels > 0 && channels <= 2, "Expected 1 or 2 channels");
 
-        var segment_length = (int)this.segment_length;
-        var stride = 0;
+        var segment_length = this.segment_length ?? 0;
+        int stride;
         if (segment_length == 0)
         {
             segment_length = length;
@@ -121,10 +121,10 @@ internal class EncodecModel : nn.Module<Tensor, Tensor>
         throw new NotImplementedException();
     }
 
-    public override Tensor forward(Tensor input)
+    public override Tensor forward(Tensor x)
     {
-        var frames = this.encode(input);
-        return this.decode(frames)[.., .., ..x.shape[-1]];
+        var frames = this.encode(x);
+        return this.decode(frames)[.., .., ..(int)x.shape[-1]];
     }
 
     private Tensor decode(List<EncodedFrame> frames)
