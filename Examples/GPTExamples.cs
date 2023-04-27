@@ -11,7 +11,7 @@ internal class GPTExamples
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // tiktoken style encoding of text into BPE (Byte pair encodings)
         var encoding = GptEncoding.GetEncoding("r50k_base");
@@ -33,7 +33,7 @@ internal class GPTExamples
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2-large", device);
+        var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // tiktoken style encoding of text into BPE (Byte pair encodings)
         var encoding = GptEncoding.GetEncoding("r50k_base");
@@ -56,7 +56,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // Some text we are giving GPT2 to riff on.
         generator(gpt, "Hello, I'm a language model,").ToList().Dump();
@@ -69,7 +69,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2-large", device);
+        var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // Some text we are giving GPT2 to riff on.
         generator(gpt, "Hello, I'm a language model,").ToList().Dump();
@@ -100,12 +100,12 @@ internal class GPTExamples
     public static async Task FineTuning()
     {
         // TODO: We're gonna need a bigger GPU...
-        var gpt = await GPT.from_pretrained("gpt2", "cpu");
+        var gpt = await GPTModel.from_pretrained("gpt2", "cpu");
         var encoding = GptEncoding.GetEncoding("r50k_base");
         gpt.train();
     }
 
-    private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
+    private static IEnumerable<string> generator(GPTModel gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
         var encoded_prompt = encoding.Encode(prompt, new HashSet<string>() { "<|endoftext|>" });

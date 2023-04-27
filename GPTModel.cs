@@ -8,13 +8,13 @@ using static System.Reflection.Metadata.BlobBuilder;
 using static Tensorboard.CostGraphDef.Types;
 using F = TorchSharp.torch.nn.functional;
 
-internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
+internal class GPTModel : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
     private Linear lm_head;
 
-    internal GPT(GPTConfig config) : base(nameof(GPT))
+    internal GPTModel(GPTConfig config) : base(nameof(GPTModel))
     {
         Contract.Assert(config.vocab_size is not 0);
         Contract.Assert(config.block_size is not 0);
@@ -69,7 +69,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
     private LayerNorm ln_f => (LayerNorm)this.transformer["ln_f"];
     private ModuleList<Block> h => (ModuleList<Block>)this.transformer["h"];
 
-    public static async Task<GPT> from_pretrained(string model_type, string device, GPTConfig override_args = null)
+    public static async Task<GPTModel> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
         // n_layer, n_head and n_embd are determined from model_type
         var model_configs = new Dictionary<string, GPTConfig>()
@@ -93,7 +93,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         };
 
         // create a from-scratch initialized minGPT model
-        var model = new GPT(config);
+        var model = new GPTModel(config);
         var sd = model.state_dict();
         var sd_keys = (from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv); // discard this mask / buffer, not a param
 
