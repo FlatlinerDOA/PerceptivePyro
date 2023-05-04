@@ -70,7 +70,7 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         else
         {
             // manual implementation of attention
-            var att = q.matmul(k.transpose(-2, -1)) * (1.0d / Math.Sqrt((double)k.size(-1)));
+            var att = q.matmul(k.transpose(-2, -1)) * (1.0d / Math.Sqrt((double)k.size(-1))); // (B, nh, T, hs) -> (B, nh, hs, T)
             att = att.masked_fill(this.bias[..,..,..(int)T,..(int)T] == 0, float.NegativeInfinity);
             att = F.softmax(att, dim: -1);
             att = this.attn_dropout.call(att);

@@ -1,9 +1,197 @@
 ﻿namespace NanoGPTSharp.Examples;
 
+using Google.Protobuf.WellKnownTypes;
 using SharpToken;
+using System;
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading;
+using static System.Net.Mime.MediaTypeNames;
+using static Tensorboard.TensorShapeProto.Types;
+using static TorchSharp.torch.nn;
+using static TorchSharp.torch.utils;
+using F = TorchSharp.torch.nn.functional;
 
 internal class GPTExamples
 {
+    internal static async Task Benchmark_MSMARCO()
+    {
+        // Benchmark on MS_MARCO 2.1 dataset for question answering.
+        // https://huggingface.co/datasets/ms_marco
+        using var file = File.OpenRead(@"D:\Dev\NanoGPTSharp\datasets\ms_marco\dev_v2.1.json");
+        var doc = await JsonDocument.ParseAsync(file);
+        var q = doc.RootElement.GetProperty("query").EnumerateObject().OfType<JsonProperty>();
+        var p = doc.RootElement.GetProperty("passages");
+        ////var a = doc.RootElement.TryGetProperty("answers", out var answers) ? answers : default;
+        var tests = from question in q
+                    let passages = p.GetProperty(question.Name)
+                        .EnumerateArray()
+                        .Select(ps =>
+                        (
+                            IsSelected: ps.GetProperty("is_selected").GetInt32() == 1,
+                            Text: ps.GetProperty("passage_text").GetString()
+                        )).ToList()
+                    ////let answer = a.TryGetProperty(question.Name, out var answer) ? answer.ToString() : null
+                    select (Question: question.Value.GetString(), Passages: passages);
+
+        // Fix the randomness in place.
+        set_seed(1337);
+
+        // Load GPT pre-trained weights.
+        const string device = "cuda";
+        var gpt = await GPT.from_pretrained("gpt2", device);
+
+        const int TOP_K = 5;
+        var scores = 0d;
+        var count = 0;
+        var results =
+            (from test in tests.Take(100)
+            let query_embed = output_embeddings(gpt, new[] { test.Question }, "cuda").First()
+            let passage_embed = output_embeddings(gpt, test.Passages.Select(p => p.Text).ToList(), "cuda").Zip(test.Passages.Select(p => p.IsSelected), (ab, c) => (ab.Prompt, ab.Embeddings, IsSelected: c ? 1 : 0))
+            let r = passage_embed
+                .Select(s => (
+                    query_embed.Prompt,
+                    s.Prompt,
+                    Prediction: 1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings),
+                    Actual: s.IsSelected,
+                    Loss: (1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings)) - s.IsSelected
+                ))
+                .OrderByDescending(x => x.Prediction)
+                .Take(TOP_K)
+                .ToList()
+            select r).ToList();
+
+        foreach (var result in results)
+        {
+            scores += result.Max(a => a.Actual);
+            count++;
+        }
+
+        // Last token got us 13% accuracy (top 3)
+        // First token got us 15% accuracy (top 3)
+        var accuracy = scores / count;
+        $"Accuracy for top {TOP_K} {accuracy:P}".Dump();
+
+        foreach (var line in results.Select(a => string.Join("\n", a.Select(b => $"{b.Item1},{b.Item2},{b.Prediction:P},{b.Actual}"))))
+        {
+            Console.WriteLine(line);
+            Console.WriteLine("------");
+        }
+        /*
+        var a = data.Select(d => d.SentenceA).Take(100).ToList();
+        var b = data.Select(d => d.SentenceB).Take(100).ToList();
+        var true_label = data.Select(d => (d.Relatedness - 1) * .25f).Take(100).ToList(); // Convert 1-5 star rating to percentage
+
+
+        predictions.Dump();*/
+    }
+    internal static async Task Benchmark_Sick()
+    {
+        // Benchmark on SICK dataset for sentence similarity score.
+        var data = from line in File.ReadLines(@"D:\Dev\NanoGPTSharp\datasets\Sick\SICK.txt").Skip(1)
+                   where !string.IsNullOrWhiteSpace(line)
+                   let cells = line.Split('\t')
+                   where cells.Length > 0
+                   select (Id: cells[0], SentenceA: cells[1], SentenceB: cells[2], Relatedness: float.Parse(cells[4]));
+
+        var a = data.Select(d => d.SentenceA).Take(100).ToList();
+        var b = data.Select(d => d.SentenceB).Take(100).ToList();
+        var true_label = data.Select(d => (d.Relatedness - 1) * .25f).Take(100).ToList(); // Convert 1-5 star rating to percentage
+
+        // Fix the randomness in place.
+        set_seed(1337);
+
+        // Load GPT pre-trained weights.
+        const string device = "cuda";
+        var gpt = await GPT.from_pretrained("gpt2", device);
+
+        var a_embed = output_embeddings(gpt, a, "cuda");
+        var b_embed = output_embeddings(gpt, b, "cuda");
+        var predictions = a_embed.Zip(b_embed, true_label)
+            .Select(s => (s.First.Prompt, s.Second.Prompt, Prediction: 1f-HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings), Actual: s.Third, Loss: (1f-HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings)) - s.Third))
+            .OrderByDescending(x => x.Loss)
+            .ToArray();
+        predictions.Dump();
+    }
+
+    internal static async Task Gpt2_Embeddings()
+    {
+        // Fix the randomness in place.
+        set_seed(1337);
+
+        // Load GPT pre-trained weights.
+        const string device = "cuda";
+        var gpt = await GPT.from_pretrained("gpt2", device);
+
+        // Some text we are giving GPT2 to compare similarity for.
+        /*var sentence_data = new[]
+        {
+            "Hello, I'm a language model.",
+            "Hello, I'm a very large language model.",
+            "Hi, I'm a language model",
+            "Hi, I'm a huge visual model",
+            "Hi, I'm a massive speech model",
+            "Hi, I'm a massive boat",
+            "Hi, I'm a boat",
+            "Hello, I'm a visual model",
+        };
+        */
+        var sentence_data = new[]
+        {
+            "The bright sun rays illuminate the meadow with a warm and comforting light.",
+            "I love eating pizza, it's my favorite food in the world.",
+            "My favorite hobby is hiking, I enjoy exploring new trails and taking in the scenery.",
+            "The concert was amazing, the band played all my favorite songs and the atmosphere was electric.", 
+        };
+
+        var s = Stopwatch.StartNew();
+        
+        // Convert sentences to GPT's semantic embedding representation.
+        var sentences = output_embeddings(gpt, sentence_data, "cuda").Dump();
+        
+        s.ElapsedMilliseconds.Dump();
+
+        // Convert the query to GPT's semantic embedding representation.
+        var query = output_embeddings(gpt, new[] { "The sun is shining brightly, casting a warm glow over the meadow." }, "cuda").Single().Dump();
+        var by_similarity = sentences
+            .Select(s => (s.Prompt, Difference: HNSW.Net.CosineDistance.SIMDForUnits(s.Embeddings, query.Embeddings)))
+            .OrderBy(x => x.Difference)
+            .ToArray();
+        by_similarity.Select(s => $"Prompt: {s.Prompt}\tDiff: {s.Difference:P}").Dump();
+    }
+
+    public static async Task Gpt2_Large_Embeddings()
+    {
+        // Fix the randomness in place.
+        set_seed(1337);
+
+        // Load GPT pre-trained weights.
+        const string device = "cpu";
+        var gpt = await GPT.from_pretrained("gpt2-large", device);
+
+        // Some text we are giving GPT2 to score similarity to
+        var sentence_data = new[]
+        {
+            "Hello, I'm a language model.",
+            "Hello, I'm a very large language model.",
+            "Hi, I'm a language model",
+            "Hi, I'm a huge visual model",
+            "Hi, I'm a massive speech model",
+            "Hi, I'm a massive boat",
+            "Hi, I'm a boat",
+            "Hello, I'm a visual model",
+        };
+
+        var sentences = output_embeddings(gpt, sentence_data, "cuda").Dump();
+        var query = output_embeddings(gpt, new[] { "Yo, I'm a huge speech model." }, "cuda").Single().Dump();
+        var by_similarity = sentences
+            .Select(s => (s.Prompt, Difference: HNSW.Net.CosineDistance.SIMD(s.Embeddings, query.Embeddings)))
+            .OrderBy(x => x.Difference)
+            .ToArray();
+        by_similarity.Select(s => $"Prompt: {s.Prompt}\tDiff: {s.Difference:P}").Dump();
+    }
+
     public static async Task Gpt2_124M_Unconditioned()
     {
         // Fix the randomness in place.
@@ -72,7 +260,7 @@ internal class GPTExamples
         var gpt = await GPT.from_pretrained("gpt2-large", device);
 
         // Some text we are giving GPT2 to riff on.
-        generator(gpt, "Hello, I'm a language model,").ToList().Dump();
+        generator(gpt, "Hi, I'm a massive boat").ToList().Dump();
     }
 
     public static async Task Gpt3TokenCounts()
@@ -105,6 +293,61 @@ internal class GPTExamples
         gpt.train();
     }
 
+    /// <summary>
+    /// Gets output embeddings from the layer just befdore the output layer.
+    /// This gives "Semantic embeddings" of the whole sentence.
+    /// </summary>
+    /// <param name="gpt"></param>
+    /// <param name="prompt"></param>
+    /// <param name="max_length"></param>
+    /// <param name="num_return_sequences"></param>
+    /// <param name="device"></param>
+    /// <returns></returns>
+    private static IEnumerable<(string Prompt, float[] Embeddings)> output_embeddings(GPT gpt, IReadOnlyList<string> prompts, string device = "cpu")
+    {
+        var encoding = GptEncoding.GetEncoding("r50k_base");
+        var encoded_prompt = prompts.Select(p => encoding.Encode(p, new HashSet<string>() { "<|endoftext|>" })).ToList();
+        var B = (long)prompts.Count;
+        var T = encoded_prompt.Max(e => e.Count);
+        var att_mask = torch.zeros(new[] { B, T }, dtype: @long, device: device);
+        var gpt_context = torch.zeros(new[] { B, T }, dtype: @long, device: device);
+
+        // TODO: Batchify if a large list of prompts is provided (probably could take IEnumerable if we paginate).
+        for (int b = 0; b < encoded_prompt.Count; b++)
+        {
+            for (int t = 0; t < encoded_prompt[b].Count; t++)
+            {
+                gpt_context[b, t] = encoded_prompt[b][t];
+                att_mask[b, t] = 1f;
+            }
+        }
+
+        var output = gpt.generate_embedding(gpt_context);
+        output.shape.Dump();
+
+        var sentence_embeddings = mean_pooling(output, att_mask); // (B, T, C) -> (B, C)
+        sentence_embeddings = sentence_embeddings.normalize(p: 2, dim: 1);
+        for (int b = 0; b < encoded_prompt.Count; b++)
+        {
+            var embeddings = sentence_embeddings[b, ..].data<float>().ToArray(); // (B, T, C) -> (C) // Mean pooled
+            yield return (prompts[b], embeddings);
+        }
+
+        //for (int b = 0; b < encoded_prompt.Count; b++)
+        //{
+        //    //var embeddings = output[b, 0, ..].data<float>().ToArray(); // (B, T, C) -> (C) // First token
+        //    var embeddings = output[b, encoded_prompt[b].Count - 1, ..].data<float>().ToArray(); // (B, T, C) -> (C) // Last token            
+        //    yield return (prompts[b], embeddings);
+        //}
+    }
+
+    private static Tensor mean_pooling(Tensor model_output, Tensor attention_mask)
+    {
+        var token_embeddings = model_output; // token embeddings
+        var input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).@float();
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min: 1e-9);
+    }
+
     private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
@@ -127,4 +370,5 @@ internal class GPTExamples
         torch.backends.cuda.matmul.allow_tf32 = true; // allow tf32 on matmul
         torch.backends.cudnn.allow_tf32 = true; // allow tf32 on cudnn
     }
+
 }

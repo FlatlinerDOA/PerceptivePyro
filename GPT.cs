@@ -4,11 +4,9 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using TorchSharp.Modules;
-using static System.Reflection.Metadata.BlobBuilder;
-using static Tensorboard.CostGraphDef.Types;
 using F = TorchSharp.torch.nn.functional;
 
-internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
+internal class GPT : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
@@ -94,6 +92,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 
         // create a from-scratch initialized minGPT model
         var model = new GPT(config);
+        model.to(device);
         var sd = model.state_dict();
         var sd_keys = (from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv); // discard this mask / buffer, not a param
 
@@ -148,7 +147,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         return model;        
     }
 
-    public override (Tensor, Tensor?) forward(Tensor idx, Tensor? targets = null)
+    public override (Tensor, Tensor?) forward(Tensor idx, Tensor? targets = null, bool embeddings_only = false)
     {
         var device = idx.device;
         var (b, t) = (idx.size()[0], idx.size()[1]);
@@ -165,6 +164,11 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         }
 
         x = this.ln_f.call(x);
+
+        if (embeddings_only)
+        {
+            return (x, null);
+        }
 
         Tensor logits;
         Tensor? loss;
@@ -229,6 +233,18 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
         }
     }
 
+    public Tensor generate_embedding(Tensor context)
+    {
+        using var no_grad = torch.no_grad();
+
+        // if the sequence context is growing too long we must crop it at block_size
+        using var idx_cond = context.size(1) <= this.config.block_size ? context : context[.., -this.config.block_size..];
+
+        // forward the model to get the logits for the index in the sequence
+        var (logits, _) = this.call(idx_cond, null, true);
+        return logits; // (B*, Last(T), C*)
+    }
+
     /// <summary>
     /// Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
     /// the sequence max_new_tokens times, feeding the predictions back into the model each time.
@@ -239,8 +255,8 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
     /// <param name="temperature"></param>
     /// <param name="top_k"></param>
     /// <returns></returns>
-    public Tensor generate(Tensor idx, int max_new_tokens, double temperature = 1.0d, int? top_k = null) {
-        
+    public Tensor generate(Tensor idx, int max_new_tokens, double temperature = 1.0d, int? top_k = null)
+    {        
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
@@ -250,7 +266,7 @@ internal class GPT : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
             using var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
 
             // forward the model to get the logits for the index in the sequence
-            var (logits, _) = this.call(idx_cond, null);
+            var (logits, _) = this.call(idx_cond, null, false);
 
             // pluck the logits at the final step and scale by desired temperature
             logits = logits[.., -1, ..] / temperature;
