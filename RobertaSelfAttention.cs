@@ -7,19 +7,21 @@ using System.Linq;
 using TorchSharp.Modules;
 using static TorchSharp.torch;
 
-public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention_mask, Tensor? head_mask, Tensor? encoder_hidden_states, Tensor? encoder_attention_mask, IReadOnlyList<Tensor>? past_key_value, bool? output_attentions), IReadOnlyList<Tensor>>
+public record struct RobertaSelfAttentionArgs(Tensor? attention_mask = null, Tensor? head_mask = null, Tensor? encoder_hidden_states = null, Tensor? encoder_attention_mask = null, IReadOnlyList<Tensor>? past_key_value = null, bool? output_attentions = null);
+////public record RobertaSelfAttentionOutput(Tensor context_layer, Tensor? attention_probs, IReadOnlyList<Tensor>? past_key_value);
+public partial class RobertaSelfAttention : nn.Module<Tensor, RobertaSelfAttentionArgs, IReadOnlyList<Tensor>>
 {
-    private readonly int num_attention_heads;
-    private readonly int attention_head_size;
-    private readonly int all_head_size;
-    private readonly Linear query;
-    private readonly Linear key;
-    private readonly Linear value;
-    private readonly Dropout dropout;
-    private readonly string position_embedding_type;
-    private readonly int max_position_embeddings;
-    private readonly Embedding distance_embedding;
-    private bool is_decoder;
+    public readonly int num_attention_heads;
+    public readonly int attention_head_size;
+    public readonly int all_head_size;
+    public readonly Linear query;
+    public readonly Linear key;
+    public readonly Linear value;
+    public readonly Dropout dropout;
+    public readonly string position_embedding_type;
+    public readonly int max_position_embeddings;
+    public readonly Embedding distance_embedding;
+    public readonly bool is_decoder;
 
     public RobertaSelfAttention(RobertaConfig config, string? position_embedding_type = null) : base(nameof(RobertaSelfAttention))
     {
@@ -42,7 +44,7 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention
             this.distance_embedding = nn.Embedding(2 * config.max_position_embeddings - 1, this.attention_head_size);
         }
 
-        this.is_decoder = config.is_decoder;
+        this.is_decoder = config.is_decoder ?? false;
         this.RegisterComponents();
     }
 
@@ -53,7 +55,7 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention
         return x.permute(0, 2, 1, 3);
     }
 
-    public override IReadOnlyList<Tensor> forward(Tensor hidden_states, (Tensor? attention_mask, Tensor? head_mask, Tensor? encoder_hidden_states, Tensor? encoder_attention_mask, IReadOnlyList<Tensor>? past_key_value, bool output_attentions) optional)
+    public override IReadOnlyList<Tensor> forward(Tensor hidden_states, RobertaSelfAttentionArgs optional)
     {
         var (attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask, past_key_value, output_attentions) = optional;
         var mixed_query_layer = this.query.call(hidden_states);
@@ -64,12 +66,14 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention
         Tensor key_layer;
         Tensor value_layer;
         var is_cross_attention = encoder_hidden_states is not null;
-        if (is_cross_attention && past_key_value is not null) {
+        if (is_cross_attention && past_key_value is not null)
+        {
             // reuse k,v, cross_attentions
             key_layer = past_key_value[0];
             value_layer = past_key_value[1];
             attention_mask = encoder_attention_mask;
-        } else if (is_cross_attention)
+        }
+        else if (is_cross_attention)
         {
             key_layer = this.transpose_for_scores(this.key.call(encoder_hidden_states));
             value_layer = this.transpose_for_scores(this.value.call(encoder_hidden_states));
@@ -107,19 +111,23 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention
         // Take the dot product between "query" and "key" to get the raw attention scores.
         var attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2));
         Tensor position_ids_l;
-        if (this.position_embedding_type == "relative_key" || this.position_embedding_type == "relative_key_query") 
+        if (this.position_embedding_type == "relative_key" || this.position_embedding_type == "relative_key_query")
         {
             var (query_length, key_length) = (query_layer.shape[2], key_layer.shape[2]);
-            if (use_cache) {
+            if (use_cache)
+            {
                 position_ids_l = torch.tensor(key_length - 1, dtype: torch.@long, device: hidden_states.device).view(-1, 1);
-            } else {
+            }
+            else
+            {
                 position_ids_l = torch.arange(query_length, dtype: torch.@long, device: hidden_states.device).view(-1, 1);
             }
+
             var position_ids_r = torch.arange(key_length, dtype: torch.@long, device: hidden_states.device).view(1, -1);
             var distance = position_ids_l - position_ids_r;
 
             var positional_embedding = this.distance_embedding.call(distance + this.max_position_embeddings - 1);
-            positional_embedding = positional_embedding.to(query_layer.dtype);  // fp16 compatibility
+            positional_embedding = positional_embedding.to(query_layer.dtype); // fp16 compatibility
 
             Tensor relative_position_scores;
             Tensor relative_position_scores_query;
@@ -135,40 +143,38 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, (Tensor? attention
                 relative_position_scores_key = torch.einsum("bhrd,lrd->bhlr", key_layer, positional_embedding);
                 attention_scores = attention_scores + relative_position_scores_query + relative_position_scores_key;
             }
-
-            attention_scores = attention_scores / Math.Sqrt(this.attention_head_size);
-            if (attention_mask is not null)
-            {
-                // Apply the attention mask is (precomputed for all layers in RobertaModel forward() function)
-                attention_scores = attention_scores + attention_mask;
-            }
-
-            // Normalize the attention scores to probabilities.
-            var attention_probs = nn.functional.softmax(attention_scores, dim: -1);
-
-            // This is actually dropping out entire tokens to attend to, which might
-            // seem a bit unusual, but is taken from the original Transformer paper.
-            attention_probs = this.dropout.call(attention_probs);
-
-            // Mask heads if we want to
-            if (head_mask is not null)
-            {
-                attention_probs = attention_probs * head_mask;
-            }
-
-            var context_layer = torch.matmul(attention_probs, value_layer);
-            context_layer = context_layer.permute(0, 2, 1, 3).contiguous();
-            var new_context_layer_shape = context_layer.size()[..-2].Append(this.all_head_size).ToArray();
-            context_layer = context_layer.view(new_context_layer_shape);
-
-            var outputs = output_attentions ? new List<Tensor>() { context_layer, attention_probs } : new List<Tensor>() { context_layer };
-
-            if (this.is_decoder && past_key_value is not null)
-            {
-                outputs.AddRange(past_key_value);
-            }
-
-            return outputs;
         }
+
+        attention_scores = attention_scores / Math.Sqrt(this.attention_head_size);
+        if (attention_mask is not null)
+        {
+            // Apply the attention mask is (precomputed for all layers in RobertaModel forward() function)
+            attention_scores = attention_scores + attention_mask;
+        }
+
+        // Normalize the attention scores to probabilities.
+        var attention_probs = nn.functional.softmax(attention_scores, dim: -1);
+
+        // This is actually dropping out entire tokens to attend to, which might
+        // seem a bit unusual, but is taken from the original Transformer paper.
+        attention_probs = this.dropout.call(attention_probs);
+
+        // Mask heads if we want to
+        if (head_mask is not null)
+        {
+            attention_probs = attention_probs * head_mask;
+        }
+
+        var context_layer = torch.matmul(attention_probs, value_layer);
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous();
+        var new_context_layer_shape = context_layer.size()[..-2].Append(this.all_head_size).ToArray();
+        context_layer = context_layer.view(new_context_layer_shape);
+        var outputs = new List<Tensor>(3)
+        {
+            context_layer
+        };
+        if (output_attentions is true) outputs.Add(attention_probs);
+        if (this.is_decoder && past_key_value is not null) outputs.AddRange(past_key_value);
+        return outputs;
     }
 }

@@ -365,3 +365,6 @@ FodyWeavers.xsd
 # Ignore model weights (.safetensors)
 *.safetensors
 /datasets/*
+/.idea/*
+[Rr]elease*/
+_ReSharper*/

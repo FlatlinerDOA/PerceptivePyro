@@ -8,7 +8,7 @@ public class RobertaSelfOutput : nn.Module<Tensor, Tensor, Tensor>
     private readonly TorchSharp.Modules.LayerNorm LayerNorm;
     private readonly Dropout dropout;
 
-    public RobertaSelfOutput(RobertaConfig config)
+    public RobertaSelfOutput(RobertaConfig config) : base(nameof(RobertaSelfOutput))
     {
         this.config = config;
         this.dense = nn.Linear(config.hidden_size, config.hidden_size);
@@ -19,9 +19,9 @@ public class RobertaSelfOutput : nn.Module<Tensor, Tensor, Tensor>
 
     public override Tensor forward(Tensor hidden_states, Tensor input_tensor)
     {
-        hidden_states = this.dense(hidden_states);
-        hidden_states = this.dropout(hidden_states);
-        hidden_states = this.LayerNorm(hidden_states + input_tensor);
+        hidden_states = this.dense.call(hidden_states);
+        hidden_states = this.dropout.call(hidden_states);
+        hidden_states = this.LayerNorm.call(hidden_states + input_tensor);
         return hidden_states;
     }
 }

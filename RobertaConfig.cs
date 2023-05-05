@@ -28,4 +28,6 @@ public record RobertaConfig
 
     public int? embedding_size { get; init; }
     public bool? is_decoder { get; init; }
+    public int chunk_size_feed_forward { get; }
+    public bool? add_cross_attention { get; }
 }
