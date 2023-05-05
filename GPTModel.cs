@@ -6,13 +6,13 @@ using System.Diagnostics.Contracts;
 using TorchSharp.Modules;
 using F = TorchSharp.torch.nn.functional;
 
-internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
+public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
     private Linear lm_head;
 
-    internal GPTModel(GPTConfig config) : base(nameof(GPTModel))
+    public GPTModel(GPTConfig config) : base(nameof(GPTModel))
     {
         Contract.Assert(config.vocab_size is not 0);
         Contract.Assert(config.block_size is not 0);

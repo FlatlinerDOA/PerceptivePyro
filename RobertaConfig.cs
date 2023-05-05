@@ -2,6 +2,8 @@
 
 public record RobertaConfig
 {
+    public bool output_hidden_states { get; init; } = false;
+    public bool output_attentions { get; init; } = false;
     public string _name_or_path { get; init; } = "sentence-transformers/all-distilroberta-v1";
     public IReadOnlyList<string> architectures { get; init; } = new string[] { "RobertaForMaskedLM" };
     public double attention_probs_dropout_prob { get; init; } = 0.1;
@@ -9,7 +11,11 @@ public record RobertaConfig
     public object classifier_dropout { get; init; } = null;
     public int eos_token_id { get; init; } = 2;
     public bool gradient_checkpointing { get; init; } = false;
-    public string hidden_act { get; init; } = "gelu";
+    
+    /// <summary>
+    /// Gets or inits an activation function or a standard named function e.g "gelu" or "relu" etc.
+    /// </summary>
+    public object hidden_act { get; init; } = "gelu";
     public double hidden_dropout_prob { get; init; } = 0.1;
     public int hidden_size { get; init; } = 768;
     public double initializer_range { get; init; } = 0.02;

@@ -37,7 +37,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
         this.position_embedding_type = config.position_embedding_type;
 
         this.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)));
-        this.register_buffer("token_type_ids", torch.zeros(this.position_ids.size(), dtype: torch.@long), persistent: false);
+        this.register_buffer("token_type_ids", torch.zeros(this.position_ids.size(), dtype: torch.@long)); // TODO: persistent: false not available with TorchSharp?
 
         this.padding_idx = config.pad_token_id;
 
@@ -63,7 +63,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
         }
 
         var input_shape = input_ids is not null ? input_ids.size() : inputs_embeds.size()[0.. -1].ToArray();
-        long seq_length = input_shape[1];
+        var seq_length = input_shape[1];
 
         // Setting the token_type_ids to the registered buffer in constructor where it is all zeros, which usually occurs
         // when its auto-generated, registered buffer helps users when tracing the model without passing token_type_ids,
@@ -71,7 +71,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
         {
             if (has_buffer("token_type_ids"))
             {
-                var buffered_token_type_ids = get_buffer("token_type_ids")[.., ..(TensorIndex)seq_length];
+                var buffered_token_type_ids = get_buffer("token_type_ids")[.., ..(int)seq_length];
                 var buffered_token_type_ids_expanded = buffered_token_type_ids.expand(input_shape[0], seq_length);
                 token_type_ids = buffered_token_type_ids_expanded;
             }

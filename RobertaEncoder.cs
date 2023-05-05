@@ -6,13 +6,23 @@ using System.Diagnostics;
 using System.Linq;
 using TorchSharp.Modules;
 
-public class RobertaEncoder : nn.Module<Tensor, Tensor?, Tensor?, Tensor?, (bool? use_cache, bool? output_attentions, bool? output_hidden_states), BaseModelOutputWithPastAndCrossAttentions>
+public readonly record struct RobertaEncoderArgs(
+    Tensor? attention_mask = null,
+    Tensor? head_mask = null,
+    Tensor? encoder_hidden_states = null,
+    Tensor? encoder_attention_mask = null,
+    IReadOnlyList<Tensor>? past_key_values = null,
+    bool use_cache = false,
+    bool output_attentions = false,
+    bool output_hidden_states = false);
+
+public class RobertaEncoder : nn.Module<Tensor, RobertaEncoderArgs, BaseModelOutputWithPastAndCrossAttentions>
 {
     private RobertaConfig config;
     private ModuleList<RobertaLayer> layer;
     private bool gradient_checkpointing;
 
-    public RobertaEncoder(RobertaConfig config)
+    public RobertaEncoder(RobertaConfig config) : base(nameof(RobertaEncoder))
     {
         this.config = config;
         this.layer = nn.ModuleList((from _ in Enumerable.Range(0, this.config.num_hidden_layers) select new RobertaLayer(config)).ToArray());
@@ -21,26 +31,16 @@ public class RobertaEncoder : nn.Module<Tensor, Tensor?, Tensor?, Tensor?, (bool
     }
 
     // Union[Tuple[torch.Tensor], BaseModelOutputWithPastAndCrossAttentions]
-    public BaseModelOutputWithPastAndCrossAttentions forward(
-        Tensor? hidden_states,
-        Tensor? attention_mask = null,
-        Tensor? head_mask = null,
-        Tensor? encoder_hidden_states = null,
-        Tensor? encoder_attention_mask = null,
-        Tensor? past_key_values = null,
-        (bool? use_cache, bool? output_attentions, bool? output_hidden_states) options)
+    public override BaseModelOutputWithPastAndCrossAttentions forward(Tensor hidden_states, RobertaEncoderArgs options)
     {
-        var (use_cache, output_attentions, output_hidden_states, return_dict) = options;
-        var all_hidden_states = output_hidden_states ? new List<Tensor>() : null;
-        var all_self_attentions = output_attentions ? new List<Tensor>() : null;
-        var all_cross_attentions = output_attentions && this.config.add_cross_attention ? new List<Tensor>() : null;
-        if (this.gradient_checkpointing && this.training)
+        var (attention_mask, head_mask, encoder_hidden_states, encoder_attention_mask, past_key_values, use_cache, output_attentions, output_hidden_states) = options;
+        var all_hidden_states = output_hidden_states is true ? new List<Tensor>() : null;
+        var all_self_attentions = output_attentions is true ? new List<Tensor>() : null;
+        var all_cross_attentions = output_attentions is true && this.config.add_cross_attention is true ? new List<Tensor>() : null;
+        if (this.gradient_checkpointing && this.training && use_cache is true)
         {
-            if (use_cache)
-            {
-                Trace.TraceWarning("`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`...");
-                use_cache = false;
-            }
+            Trace.TraceWarning("`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`...");
+            use_cache = false;
         }
 
         var next_decoder_cache = use_cache ? new List<Tensor>() : null;
@@ -53,6 +53,7 @@ public class RobertaEncoder : nn.Module<Tensor, Tensor?, Tensor?, Tensor?, (bool
 
             var layer_head_mask = head_mask is not null ? head_mask[i] : null;
             var past_key_value = past_key_values is not null ? past_key_values[i] : null;
+            IReadOnlyList<Tensor> layer_outputs;
             if (this.gradient_checkpointing && this.training)
             {
                 throw new NotSupportedException("Gradient checkpointing not supported yet.");
@@ -66,16 +67,15 @@ public class RobertaEncoder : nn.Module<Tensor, Tensor?, Tensor?, Tensor?, (bool
             }
             else
             {
-                var layer_outputs = layer_module.forward(
+                layer_outputs = layer_module.forward(
                     hidden_states,
-                    attention_mask,
+                    new(attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
-                    past_key_value,
-                    output_attentions);
+                    past_key_value is not null ? new List<Tensor> { past_key_value } : null,
+                    output_attentions));
             }
-
 
             hidden_states = layer_outputs[0];
             if (use_cache is true)
@@ -86,7 +86,7 @@ public class RobertaEncoder : nn.Module<Tensor, Tensor?, Tensor?, Tensor?, (bool
             if (output_attentions is true)
             {
                 all_self_attentions.Add(layer_outputs[1]);
-                if (this.config.add_cross_attention)
+                if (this.config.add_cross_attention is true)
                 {
                     all_cross_attentions.Add(layer_outputs[2]); 
                 }

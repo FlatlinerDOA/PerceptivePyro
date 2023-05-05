@@ -1,11 +1,9 @@
-﻿namespace NanoGPTSharp;
-
-using NanoGPTSharp.Examples;
-using System;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.XPath;
+using NanoGPTSharp.Examples;
+
+namespace NanoGPTSharp;
 
 internal class Program
 {
@@ -53,12 +51,13 @@ internal class Program
 
     private static IEnumerable<(string Name, Func<Task> Function, string Help)> GetExamples(IEnumerable<Type> exampleTypes)
     {
-        var q = from t in exampleTypes
-                from method in t.GetMethods(BindingFlags.Static | BindingFlags.Public).AsEnumerable()
+        var q = from type in exampleTypes
+                from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public)
                 select (
-                    Name: method.Name.ToLowerInvariant,
+                    Name: method.Name.ToLowerInvariant(),
                     Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
-                    Help: GetHelpForMethod(t, method));
+                    Help: GetHelpForMethod(type, method)
+                );
         return q;
     }
 

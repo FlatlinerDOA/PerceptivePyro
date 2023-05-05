@@ -10,6 +10,49 @@ namespace NanoGPTSharp
 {
     public static class TensorExtensions
     {
+        private static readonly double sqrt_2_pi = Math.Sqrt(2.0 / Math.PI);
+        private static readonly double sqrt_2 = Math.Sqrt(2.0);
+
+        public static Tensor Gelu(this Tensor x) => x * 0.5 * (1.0 + torch.erf(x / sqrt_2));
+        
+        /// <summary>
+        /// Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
+        /// Reference: <a href="https://arxiv.org/abs/1606.08415">Gaussian Error Linear Units(GELU) paper</a>
+        /// </summary>
+        /// <param name="x">Input tensor</param>
+        /// <returns>Tensor of gelu operator applied.</returns>
+        public static Tensor NewGelu(this Tensor x) => 0.5 * x * (1.0 + torch.tanh(sqrt_2_pi * (x + 0.044715 * torch.pow(x, 3.0))));
+        
+        public static Tensor FastGELU(this Tensor x) => 0.5 * x * (1.0 + torch.tanh(x * 0.7978845608 * (1.0 + 0.044715 * x * x)));
+        
+        public static Tensor QuickGELU(this Tensor x) => x * torch.sigmoid(1.702 * x);
+        
+        public static Tensor ClippedGELU(this Tensor x, float min , float max) => torch.clip(x.Gelu(), min, max);
+        
+        
+        public static nn.Module<Tensor, Tensor> GetActivationFunction(this string activation_func) => activation_func switch
+        {
+            "gelu" => nn.GELU(),
+            "gelu_10" => new Activation(t => t.ClippedGELU(-10, 10), nameof(ClippedGELU)),
+            "gelu_fast" => new Activation(FastGELU, nameof(FastGELU)),
+            "gelu_new" => new Activation(NewGelu, nameof(NewGelu)),
+            "gelu_python" =>  new Activation(Gelu, nameof(Gelu)),
+            // "gelu_pytorch_tanh" => PytorchGELUTanh,
+            // "gelu_accurate" => AccurateGELUActivation,
+            // "laplace" => LaplaceActivation,
+            // "linear" => LinearActivation,
+            // "mish" => MishActivation,
+            "quick_gelu" => new Activation(QuickGELU, nameof(QuickGELU)),
+            "relu" => nn.ReLU(),
+            ///"relu2" => ReLUSquaredActivation,
+            "relu6" => nn.ReLU6(),
+            "sigmoid" => nn.Sigmoid(),
+            "silu" => nn.SiLU(),
+            "swish" => nn.SiLU(),
+            "tanh" => nn.Tanh(),
+            _ => throw new NotSupportedException($"{activation_func} not supported.")
+        };
+        
         public static Tensor apply_chunking_to_forward(this  Tensor input_tensors, Func<Tensor, Tensor> forward_fn, int chunk_size, int chunk_dim)
         {
             Func<Tensor[], Tensor> forward_array = (t) => forward_fn(t[0]);
@@ -75,6 +118,22 @@ namespace NanoGPTSharp
         {
             var offset = index.GetOffset(list.Count);
             return list.Skip(offset).Take(1).ToList();
+        }
+        
+        /// <summary>
+        /// Wraps a function into a Pytorch module so that the model is self describing
+        /// as to what activation function is used, when printing out the model.
+        /// </summary>
+        private class Activation : nn.Module<Tensor, Tensor>
+        {
+            private readonly Func<Tensor,Tensor> activation;
+
+            public Activation(Func<Tensor, Tensor> activation, string name): base(name)
+            {
+                this.activation = activation;
+            }
+
+            public override Tensor forward(Tensor input) => this.activation(input);
         }
     }
 }
