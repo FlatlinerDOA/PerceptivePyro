@@ -1,17 +1,9 @@
 ﻿namespace NanoGPTSharp.Examples;
 
-using Google.Protobuf.WellKnownTypes;
 using SharpToken;
 using System;
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading;
-using static System.Net.Mime.MediaTypeNames;
-using static Tensorboard.TensorShapeProto.Types;
-using static TorchSharp.torch.nn;
-using static TorchSharp.torch.utils;
-using F = TorchSharp.torch.nn.functional;
 
 internal class GPTExamples
 {
@@ -40,7 +32,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cuda";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         const int TOP_K = 5;
         var scores = 0d;
@@ -104,7 +96,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cuda";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         var a_embed = output_embeddings(gpt, a, "cuda");
         var b_embed = output_embeddings(gpt, b, "cuda");
@@ -122,7 +114,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cuda";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // Some text we are giving GPT2 to compare similarity for.
         /*var sentence_data = new[]
@@ -168,7 +160,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2-large", device);
+        var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // Some text we are giving GPT2 to score similarity to
         var sentence_data = new[]
@@ -199,7 +191,7 @@ internal class GPTExamples
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // tiktoken style encoding of text into BPE (Byte pair encodings)
         var encoding = GptEncoding.GetEncoding("r50k_base");
@@ -221,7 +213,7 @@ internal class GPTExamples
 
         // Load GPT2 pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2-large", device);
+        var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // tiktoken style encoding of text into BPE (Byte pair encodings)
         var encoding = GptEncoding.GetEncoding("r50k_base");
@@ -244,7 +236,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2", device);
+        var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // Some text we are giving GPT2 to riff on.
         generator(gpt, "Hello, I'm a language model,").ToList().Dump();
@@ -257,7 +249,7 @@ internal class GPTExamples
 
         // Load GPT pre-trained weights.
         const string device = "cpu";
-        var gpt = await GPT.from_pretrained("gpt2-large", device);
+        var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // Some text we are giving GPT2 to riff on.
         generator(gpt, "Hi, I'm a massive boat").ToList().Dump();
@@ -288,13 +280,13 @@ internal class GPTExamples
     public static async Task FineTuning()
     {
         // TODO: We're gonna need a bigger GPU...
-        var gpt = await GPT.from_pretrained("gpt2", "cpu");
+        var gpt = await GPTModel.from_pretrained("gpt2", "cpu");
         var encoding = GptEncoding.GetEncoding("r50k_base");
         gpt.train();
     }
 
     /// <summary>
-    /// Gets output embeddings from the layer just befdore the output layer.
+    /// Gets output embeddings from the layer just before the output layer.
     /// This gives "Semantic embeddings" of the whole sentence.
     /// </summary>
     /// <param name="gpt"></param>
@@ -303,7 +295,7 @@ internal class GPTExamples
     /// <param name="num_return_sequences"></param>
     /// <param name="device"></param>
     /// <returns></returns>
-    private static IEnumerable<(string Prompt, float[] Embeddings)> output_embeddings(GPT gpt, IReadOnlyList<string> prompts, string device = "cpu")
+    private static IEnumerable<(string Prompt, float[] Embeddings)> output_embeddings(GPTModel gpt, IReadOnlyList<string> prompts, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
         var encoded_prompt = prompts.Select(p => encoding.Encode(p, new HashSet<string>() { "<|endoftext|>" })).ToList();
@@ -348,7 +340,7 @@ internal class GPTExamples
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min: 1e-9);
     }
 
-    private static IEnumerable<string> generator(GPT gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
+    private static IEnumerable<string> generator(GPTModel gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
     {
         var encoding = GptEncoding.GetEncoding("r50k_base");
         var encoded_prompt = encoding.Encode(prompt, new HashSet<string>() { "<|endoftext|>" });
@@ -370,5 +362,4 @@ internal class GPTExamples
         torch.backends.cuda.matmul.allow_tf32 = true; // allow tf32 on matmul
         torch.backends.cudnn.allow_tf32 = true; // allow tf32 on cudnn
     }
-
 }

@@ -4,16 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
-using System.IO.MemoryMappedFiles;
 using System.Text.Json;
 using System.Diagnostics.Contracts;
-using System.Data.Common;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 /// <summary>
 /// .NET 
 /// </summary>
-internal static class SafeTensors
+public static class SafeTensors
 {
     public static Dictionary<string, ScalarType> dtypes = new Dictionary<string, ScalarType>
     {
@@ -96,6 +93,29 @@ internal static class SafeTensors
         output.to(device);
 
         return output;
+    }
+
+    /// <summary>
+    /// Downloads the .safetensors for a specified model from HuggingFace into the models folder. (Must have a .safetensors model file.)
+    /// </summary>
+    /// <param name="model">The name of the model to download.</param>
+    /// <returns>The full path to the model file.</returns>
+    /// <exception cref="HttpRequestException">Http request failed.</exception>
+    /// <exception cref="IOException">Disk access failed to write the file.</exception>
+    public static async Task<string> DownloadWeightsAsync(string model)
+    {
+        var filePath = Path.GetFullPath($@".\models\{model}\model.safetensors");
+        if (File.Exists(filePath))
+        {
+            return filePath;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        $"Downloading weights from pretrained {model} to {filePath}".Dump();
+        var stream = await new HttpClient().GetStreamAsync($"https://huggingface.co/{model}/resolve/main/model.safetensors");
+        using var outputStream = File.OpenWrite(filePath);
+        await stream.CopyToAsync(outputStream);
+        return filePath;
     }
 
     public sealed record SafeTensorMetadata

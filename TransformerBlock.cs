@@ -3,18 +3,18 @@
 /// <summary>
 /// Transformer block: Communication between tokens followed by computation on tokens.
 /// </summary>
-internal class Block : nn.Module<Tensor, Tensor>
+internal class TransformerBlock : nn.Module<Tensor, Tensor>
 {
     public LayerNorm ln_1;
     public CausalSelfAttention attn;
     public LayerNorm ln_2;
     public MultiLayerPerceptron mlp;
 
-    public Block(GPTConfig config): this(config.n_embd, config.n_head, config.block_size, config.dropout, config.has_bias)
+    public TransformerBlock(GPTConfig config): this(config.n_embd, config.n_head, config.block_size, config.dropout, config.has_bias)
     {
     }
 
-    internal Block(int n_embd, int n_heads, int block_size, double dropout, bool hasBias) : base(nameof(Block))
+    internal TransformerBlock(int n_embd, int n_heads, int block_size, double dropout, bool hasBias) : base(nameof(TransformerBlock))
     {
         this.ln_1 = new LayerNorm(n_embd, hasBias);
         this.attn = new CausalSelfAttention(n_embd, n_heads, block_size, dropout, hasBias);

@@ -2,9 +2,22 @@
 
 using NanoGPTSharp.Examples;
 using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Xml.XPath;
 
 internal class Program
 {
+    private static readonly Type[] ExampleTypes = new[]
+    {
+        typeof(GPTExamples),
+        typeof(BigramLanguageModelExamples),
+        typeof(RobertaExamples),
+        typeof(SafeTensorsExamples),
+        typeof(SelfAttentionExamples)
+    };
+
     const string Help =
         """
         This is just a bunch of examples of using transformer architecture all using pure C# and torch:
@@ -19,6 +32,7 @@ internal class Program
         gpt2_prompted - Generates a prompted response from GPT2
         gpt3_token_counts - Counts some tokens using GPT3 encoding
         gpt4_token_counts - Counts some tokens using GPT4 encoding
+        roberta_similarity - Compares sentence similarity using the all-distilroberta-v1 model.
         safetensors - Test code for loading .safetensors files
         training_shakespeare - Training a small language model on Shakespeare. (CUDA GPU with 10gb or more RAM required)
 
@@ -26,31 +40,34 @@ internal class Program
 
     static async Task Main(string[] args)
     {
-        Task action = args.FirstOrDefault() switch
-        {
-            "benchmark_msmarco" => GPTExamples.Benchmark_MSMARCO(),
-            "benchmark_sick" => GPTExamples.Benchmark_Sick(),
-            "gpt2_unconditioned" => GPTExamples.Gpt2_124M_Unconditioned(),
-            "gpt2_large_unconditioned" => GPTExamples.Gpt2_Large_Unconditioned(),
-            "gpt2_embeddings" => GPTExamples.Gpt2_Embeddings(),
-            "gpt2_large_embeddings" => GPTExamples.Gpt2_Large_Embeddings(),
-            "gpt2_prompted" => GPTExamples.Gpt2_124m_Prompted(),
-            "gpt2_large_prompted" => GPTExamples.Gpt2_Large_Prompted(),
-            "gpt3_token_counts" => GPTExamples.Gpt3TokenCounts(),
-            "gpt4_token_counts" => GPTExamples.Gpt4TokenCounts(),
-            "safetensors" => SafeTensorsExamples.LoadingSafeTensors(),
-            "training_shakespeare" => BigramLanguageModelExamples.TrainingOnShakespeare(),
-            _ => ShowHelp()
-        };
-
         try
         {
-            await action;
+            var examples = GetExamples(ExampleTypes).ToDictionary(k => k.Name, k => k.Function, StringComparer.OrdinalIgnoreCase);
+            await examples.GetValueOrDefault(args.FirstOrDefault(), ShowHelp)();
         }
-        catch(Exception ex) 
+        catch (Exception ex)
         {
             ex.Dump();
         }
+    }
+
+    private static IEnumerable<(string Name, Func<Task> Function, string Help)> GetExamples(IEnumerable<Type> exampleTypes)
+    {
+        var q = from t in exampleTypes
+                from method in t.GetMethods(BindingFlags.Static | BindingFlags.Public).AsEnumerable()
+                select (
+                    Name: method.Name.ToLowerInvariant,
+                    Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
+                    Help: GetHelpForMethod(t, method));
+        return q;
+    }
+
+    private static string GetHelpForMethod(Type type, MethodInfo method)
+    {
+        var xmlFilename = $"{type.Assembly.GetName().Name}.xml";
+        var doc = new XPathDocument(xmlFilename);
+        doc.Dump();
+        return null;
     }
 
     private static Task ShowHelp()

@@ -6,24 +6,31 @@ using System.Diagnostics.Contracts;
 using TorchSharp.Modules;
 using F = TorchSharp.torch.nn.functional;
 
-internal class GPT : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
+internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
     private Linear lm_head;
 
-    internal GPT(GPTConfig config) : base(nameof(GPT))
+    internal GPTModel(GPTConfig config) : base(nameof(GPTModel))
     {
         Contract.Assert(config.vocab_size is not 0);
         Contract.Assert(config.block_size is not 0);
 
         this.config = config;
 
+        // Word Token Embeddings
         var wte = nn.Embedding(config.vocab_size, config.n_embd);
+
+        // Word Positional Embeddings
         var wpe = nn.Embedding(config.block_size, config.n_embd);
+
         var drop = nn.Dropout(config.dropout);
+
         var ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
-        var h = nn.ModuleList((from _ in Enumerable.Range(0, config.n_layer) select new Block(config)).ToArray());
+        
+        // Transformer Layers
+        var h = nn.ModuleList((from _ in Enumerable.Range(0, config.n_layer) select new TransformerBlock(config)).ToArray());
         this.transformer = nn.ModuleDict(
             ("wte", wte),
             ("wpe", wpe),
@@ -65,9 +72,9 @@ internal class GPT : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? lo
     private Dropout drop => (Dropout)this.transformer["drop"];
 
     private LayerNorm ln_f => (LayerNorm)this.transformer["ln_f"];
-    private ModuleList<Block> h => (ModuleList<Block>)this.transformer["h"];
+    private ModuleList<TransformerBlock> h => (ModuleList<TransformerBlock>)this.transformer["h"];
 
-    public static async Task<GPT> from_pretrained(string model_type, string device, GPTConfig override_args = null)
+    public static async Task<GPTModel> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
         // n_layer, n_head and n_embd are determined from model_type
         var model_configs = new Dictionary<string, GPTConfig>()
@@ -91,13 +98,13 @@ internal class GPT : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? lo
         };
 
         // create a from-scratch initialized minGPT model
-        var model = new GPT(config);
+        var model = new GPTModel(config);
         model.to(device);
         var sd = model.state_dict();
         var sd_keys = (from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv); // discard this mask / buffer, not a param
 
         // init a huggingface/transformers model
-        var safeTensorsFilePath = await DownloadDataSetAsync(model_type);
+        var safeTensorsFilePath = await SafeTensors.DownloadWeightsAsync(model_type);
         var sd_hf = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
                     where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
                     select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
@@ -309,21 +316,5 @@ internal class GPT : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? lo
         {
             nn.init.normal_(e.weight, mean: 0.0, std: 0.02);
         }
-    }
-
-    private static async Task<string> DownloadDataSetAsync(string model)
-    {
-        var filePath = Path.GetFullPath($@".\models\{model}\model.safetensors");
-        if (File.Exists(filePath))
-        {
-            return filePath;
-        }
-
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-        $"Downloading weights from pretrained {model} to {filePath}".Dump();
-        var stream = await new HttpClient().GetStreamAsync($"https://huggingface.co/{model}/resolve/main/model.safetensors");
-        using var outputStream = File.OpenWrite(filePath);
-        await stream.CopyToAsync(outputStream);
-        return filePath;
     }
 }
