@@ -18,6 +18,7 @@ internal class Program
         gpt4_token_counts - Counts some tokens using GPT4 encoding
         safetensors - Test code for loading .safetensors files
         training_shakespeare - Training a small language model on Shakespeare. (CUDA GPU with 10gb or more RAM required)
+        vector_search - Demo of building a Vector Search database using a BSP.
 
         """;
 
@@ -33,6 +34,7 @@ internal class Program
             "gpt4_token_counts" => GPTExamples.Gpt4TokenCounts(),
             "safetensors" => SafeTensorsExamples.LoadingSafeTensors(),
             "training_shakespeare" => BigramLanguageModelExamples.TrainingOnShakespeare(),
+            "vector_search" => VectorSearchExamples.VectorImageSearch(),
             _ => ShowHelp()
         };
 
