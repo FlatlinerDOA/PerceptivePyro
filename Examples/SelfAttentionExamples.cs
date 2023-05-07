@@ -9,6 +9,10 @@ namespace NanoGPTSharp.Examples
 {
     internal class SelfAttentionExamples
     {
+        /// <summary>
+        /// Demonstrates how self attention is constructed, step by step.
+        /// </summary>
+        /// <returns></returns>
         internal static Task self_attention_explained()
         {
             // Self attention - we are attending to our ourselves (in this case the x input).

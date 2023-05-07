@@ -1,0 +1,349 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NanoGPTSharp</name>
+    </assembly>
+    <members>
+        <member name="P:NanoGPTSharp.CausalSelfAttention.bias">
+            <summary>
+            Gets or sets the bias buffer.
+            </summary>
+        </member>
+        <member name="T:NanoGPTSharp.DataSets">
+            <summary>
+            Provides simplified access to data sets by downloading them first.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.DataSets.DownloadDataSetAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Attempts to download a data set or just returns it's file path if it has already been downloaded.
+            </summary>
+            <param name="dataset">The name of the dataset.</param>
+            <param name="url">The url to download the data set from if it isn't already.</param>
+            <param name="cancellation">Cancels the download.</param>
+            <returns>The file path to the downloaded data set.</returns>
+        </member>
+        <member name="T:NanoGPTSharp.DumpExtensions">
+            <summary>
+            LINQPad style dump extensions for "stringify" nicely and printing out to the console.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.DumpExtensions.Stringify(System.Object)">
+            <summary>
+            Creates a pythonesque print string for any object.
+            </summary>
+            <param name="item">The object to stringify.</param>
+            <returns>A non null string.</returns>
+        </member>
+        <member name="M:NanoGPTSharp.DumpExtensions.Stringify(System.Collections.IEnumerable)">
+            <summary>
+            Creates a pythonesque print string for a sequence of objects.
+            </summary>
+            <param name="items">The sequence.</param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.DumpExtensions.Stringify(TorchSharp.Scalar)">
+            <summary>
+            Creates a pythonesque print string for a Torch scalar.
+            </summary>
+            <param name="item">The Torch scalar to stringify.</param>
+            <returns>A non null string.</returns>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.batch_size">
+            <summary>
+            how many independent sequences will we process in parallel?
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.block_size">
+            <summary>
+            What is the maximum context length for predictions?
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.max_iters">
+            <summary>
+            Upper limit on the number of iterations (steps)
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.eval_interval">
+            <summary>
+            How many iterations or steps before we evaluate the metrics.
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.learning_rate">
+            <summary>
+            Learning rate for gradients.
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.eval_iters">
+            <summary>
+            How many steps should be dedicated to evaluation.
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.n_embd">
+            <summary>
+            Number of embeddings
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.n_heads">
+            <summary>
+            Number of attention heads per block
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.n_layers">
+            <summary>
+            Number of transformer block layers
+            </summary>
+        </member>
+        <member name="F:NanoGPTSharp.Examples.BigramLanguageModelExamples.dropout">
+            <summary>
+            Ratio of dropout for regularization purposes (can help avoid overfitting and smooths out loss curve).
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.BigramLanguageModelExamples.Training_On_Shakespeare">
+            <summary>
+            Demonstrates training a Transformer Language Model on 1MB of William Shakespeare's works.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Benchmark_MSMARCO">
+            <summary>
+            Evaluates GPT2 embedding sentence similarity scoring on the MS MARCO V2.1 dataset.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Benchmark_Sick">
+            <summary>
+            Evaluates GPT2 embedding sentence similarity scoring on the SICK dataset.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_Embeddings">
+            <summary>
+            Generates embeddings for a set of sentences.
+            124M parameter model (gpt2)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_Large_Embeddings">
+            <summary>
+            Generates embeddings for a set of sentences.
+            774M parameter model (gpt2-large)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_124M_Unconditioned">
+            <summary>
+            Generates unconditioned (unprompted) random musings by GPT2.
+            124M parameter pre-trained model (gpt2)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_Large_Unconditioned">
+            <summary>
+            Generates unconditioned (unprompted) random musings by GPT2 - 774M parameter pre-trained model (gpt2-large)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_124m_Prompted">
+            <summary>
+            Generates a prompted response from GPT2 - 124M parameter pre-trained model (gpt2)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.Gpt2_Large_Prompted">
+            <summary>
+            Generates a prompted response from GPT2 - 774M parameter pre-trained model (gpt2-large)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.GPT2_Fine_Tuning">
+            <summary>
+            Work in Progress - Demonstrates fine tuning GPT2 124M parameter pre-trained model. This one requires a 12GB+ graphics card .
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.GPTExamples.output_embeddings(NanoGPTSharp.GPTModel,System.Collections.Generic.IReadOnlyList{System.String},System.String)">
+            <summary>
+            Gets output embeddings from the layer just before the output layer.
+            This gives "Semantic embeddings" of the whole sentence.
+            </summary>
+            <param name="gpt"></param>
+            <param name="prompt"></param>
+            <param name="max_length"></param>
+            <param name="num_return_sequences"></param>
+            <param name="device"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.RobertaExamples.Roberta_Tokenizing">
+            <summary>
+            Tokenizes sentences into numbers with the RobertaTokenizer.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.SafeTensorsExamples.Loading_Safe_Tensors">
+            <summary>
+            Demonstrates loading and inspecting safe tensors.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.SelfAttentionExamples.self_attention_explained">
+            <summary>
+            Demonstrates how self attention is constructed, step by step.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:NanoGPTSharp.FeedForward">
+            <summary>
+            Multiple heads of self attention, running in parallel.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.GPTModel.get_num_params(System.Boolean)">
+            <summary>
+            Return the number of parameters in the model.
+            For non-embedding count(default), the position embeddings get subtracted.
+            The token embeddings would too, except due to the parameter sharing these
+            params are actually used as weights in the final layer, so we include them.
+            </summary>
+            <param name="non_embedding"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.GPTModel.crop_block_size(System.Int32)">
+            <summary>
+            model surgery to decrease the block size if necessary
+            e.g. we may load the GPT2 pretrained model checkpoint (block size 1024)
+            but want to use a smaller block size for some smaller, simpler model
+            </summary>
+            <param name="new_block_size">New desired block size</param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.GPTModel.generate(TorchSharp.torch.Tensor,System.Int32,System.Double,System.Nullable{System.Int32})">
+            <summary>
+            Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
+            the sequence max_new_tokens times, feeding the predictions back into the model each time.
+            Most likely you'll want to make sure to be in model.eval() mode of operation for this.
+            </summary>
+            <param name="idx"></param>
+            <param name="max_new_tokens"></param>
+            <param name="temperature"></param>
+            <param name="top_k"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NanoGPTSharp.Head">
+            <summary>
+            One head of self attention
+            </summary>
+        </member>
+        <member name="T:NanoGPTSharp.LayerNorm">
+            <summary>
+            LayerNorm but with an optional bias. PyTorch doesn't support simply hasBias:False
+            </summary>
+        </member>
+        <member name="T:NanoGPTSharp.MultiHeadAttention">
+            <summary>
+            Multiple heads of self attention, running in parallel.
+            </summary>
+        </member>
+        <member name="T:NanoGPTSharp.MultiLayerPerceptron">
+            <summary>
+            MLP
+            </summary>
+        </member>
+        <member name="P:NanoGPTSharp.RobertaConfig.hidden_act">
+            <summary>
+            Gets or inits an activation function or a standard named function e.g "gelu" or "relu" etc.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.RobertaEmbeddings.create_position_ids_from_input_ids(TorchSharp.torch.Tensor,TorchSharp.torch.Tensor,System.Int32)">
+            <summary>
+            Replace non-padding symbols with their position numbers. Position numbers begin at padding_idx+1. Padding symbols
+            are ignored. This is modified from fairseq's `utils.make_positions`.
+            </summary>
+            <param name="input_ids"></param>
+            <param name="padding_idx"></param>
+            <param name="past_key_values_length"></param>
+            <returns></returns>
+        </member>
+        <member name="T:NanoGPTSharp.RobertaModel">
+            <summary>
+            TorchLib Roberta Transformer (from HuggingFace).
+            Code ported from https://github.com/huggingface/transformers/blob/main/src/transformers/models/roberta/modeling_roberta.py
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.RobertaModel._convert_head_mask_to_5d(TorchSharp.torch.Tensor,System.Int32,System.Nullable{TorchSharp.torch.ScalarType})">
+            <summary>
+            -> [num_hidden_layers x batch x num_heads x seq_length x seq_length]
+            </summary>
+            <param name="head_mask"></param>
+            <param name="num_hidden_layers"></param>
+            <param name="dtype">Force a data type (optional).</param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.RobertaModel.get_extended_attention_mask(TorchSharp.torch.Tensor,TorchSharp.torch.Tensor,TorchSharp.torch.Device,System.Nullable{TorchSharp.torch.ScalarType})">
+            <summary>
+            Makes broadcastable attention and causal masks so that future and masked tokens are ignored.
+            </summary>
+            <param name="attention_mask">Mask with ones indicating tokens to attend to, zeros for tokens to ignore.</param>
+            <param name="input_shape">The shape of the input to the model.</param>
+            <param name="device"></param>
+            <param name="dtype"></param>
+            <returns></returns>
+            <exception cref="T:System.NotSupportedException"></exception>
+            <exception cref="T:System.ArgumentException"></exception>
+        </member>
+        <member name="T:NanoGPTSharp.SafeTensors">
+            <summary>
+            .NET 
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.SafeTensors.LoadFile(System.String,TorchSharp.torch.Device)">
+            <summary>
+            Loads a .safetensors file into a sequence of named Tensors
+            </summary>
+            <param name="filename"></param>
+            <param name="device"></param>
+            <returns></returns>
+        </member>
+        <member name="M:NanoGPTSharp.SafeTensors.DownloadWeightsAsync(System.String)">
+            <summary>
+            Downloads the .safetensors for a specified model from HuggingFace into the models folder. (Must have a .safetensors model file.)
+            </summary>
+            <param name="model">The name of the model to download.</param>
+            <returns>The full path to the model file.</returns>
+            <exception cref="T:System.Net.Http.HttpRequestException">Http request failed.</exception>
+            <exception cref="T:System.IO.IOException">Disk access failed to write the file.</exception>
+        </member>
+        <member name="M:NanoGPTSharp.TensorExtensions.NewGelu(TorchSharp.torch.Tensor)">
+            <summary>
+            Implementation of the GELU activation function currently in Google BERT repo (identical to OpenAI GPT).
+            Reference: <a href="https://arxiv.org/abs/1606.08415">Gaussian Error Linear Units(GELU) paper</a>
+            </summary>
+            <param name="x">Input tensor</param>
+            <returns>Tensor of gelu operator applied.</returns>
+        </member>
+        <member name="M:NanoGPTSharp.TensorExtensions.apply_chunking_to_forward(System.Func{TorchSharp.torch.Tensor[],TorchSharp.torch.Tensor},System.Int32,System.Int32,TorchSharp.torch.Tensor[])">
+            <summary>
+            This function chunks the `input_tensors` into smaller input tensor parts of size `chunk_size` over the dimension
+            `chunk_dim`. It then applies a layer `forward_fn` to each chunk independently to save memory.
+            If the `forward_fn` is independent across the `chunk_dim` this function will yield the same result as directly
+            applying `forward_fn` to `input_tensors`.
+            </summary>
+            <param name="foward_fn"></param>
+            <param name="chunk_size"></param>
+            <param name="chunk_dim"></param>
+            <param name="input_tensors"></param>
+            <typeparam name="TResult"></typeparam>
+            <returns></returns>
+        </member>
+        <member name="T:NanoGPTSharp.TensorExtensions.Activation">
+            <summary>
+            Wraps a function into a Pytorch module so that the model is self describing
+            as to what activation function is used, when printing out the model.
+            </summary>
+        </member>
+        <member name="T:NanoGPTSharp.TransformerBlock">
+            <summary>
+            Transformer block: Communication between tokens followed by computation on tokens.
+            </summary>
+        </member>
+    </members>
+</doc>

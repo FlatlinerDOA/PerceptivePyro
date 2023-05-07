@@ -6,6 +6,7 @@ using System.Text;
 using System.IO;
 using System.Text.Json;
 using System.Diagnostics.Contracts;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// .NET 
@@ -29,7 +30,7 @@ public static class SafeTensors
     /// <param name="filename"></param>
     /// <param name="device"></param>
     /// <returns></returns>
-    public static IEnumerable<(string Name, Tensor Tensor)> LoadFile(string filename, string device)
+    public static IEnumerable<(string Name, Tensor Tensor)> LoadFile(string filename, Device? device = null)
     {
         using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
 
@@ -76,7 +77,7 @@ public static class SafeTensors
         return metadata.OrderBy(m => m.Value.data_offsets?[0] ?? 0);
     }
 
-    public static Tensor CreateTensor(BinaryReader reader, SafeTensorMetadata info, int offset, string device)
+    public static Tensor CreateTensor(BinaryReader reader, SafeTensorMetadata info, int offset, Device? device)
     {
         var dtype = dtypes[info.dtype];
         var shape = info.shape;
@@ -90,7 +91,10 @@ public static class SafeTensors
         // HACK: Load into an array first, doesn't avoid a copy, but just wanted to get it working. Limits tensors to 2gb or less.
         Tensor output = torch.empty(shape, dtype, torch.CPU);
         output.bytes = b;
-        output.to(device);
+        if (device != null)
+        {
+            output.to(device);
+        }
 
         return output;
     }

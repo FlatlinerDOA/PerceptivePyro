@@ -52,7 +52,11 @@ internal class BigramLanguageModelExamples
     /// </summary>
     const double dropout = 0.2;
 
-    public static async Task TrainingOnShakespeare()
+    /// <summary>
+    /// Demonstrates training a Transformer Language Model on 1MB of William Shakespeare's works.
+    /// </summary>
+    /// <returns></returns>
+    public static async Task Training_On_Shakespeare()
     {
         var device = torch.cuda_is_available() ? "cuda" : "cpu";
 
@@ -60,10 +64,10 @@ internal class BigramLanguageModelExamples
         torch.manual_seed(1337);
 
         // We always start with a dataset to train on. Let's download the tiny shakespeare dataset
-        await DownloadDataSetAsync();
+        var filePath = await DownloadDataSetAsync();
 
         // read it in to inspect it
-        var text = await File.ReadAllTextAsync("input.txt");
+        var text = await File.ReadAllTextAsync(filePath);
         text.Length.Dump();
 
         // let's look at the first 1000 characters
@@ -201,14 +205,5 @@ internal class BigramLanguageModelExamples
         return (x.to(device), y.to(device));
     }
 
-    static async Task DownloadDataSetAsync()
-    {
-        if (File.Exists("input.txt"))
-        {
-            return;
-        }
-
-        var response = await new HttpClient().GetStringAsync("https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt");
-        await File.WriteAllTextAsync("input.txt", response);
-    }
+    static Task<string> DownloadDataSetAsync() => DataSets.DownloadDataSetAsync("shakespeare", "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt");
 }

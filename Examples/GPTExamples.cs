@@ -7,6 +7,10 @@ using System.Text.Json;
 
 internal class GPTExamples
 {
+    /// <summary>
+    /// Evaluates GPT2 embedding sentence similarity scoring on the MS MARCO V2.1 dataset.
+    /// </summary>
+    /// <returns></returns>
     internal static async Task Benchmark_MSMARCO()
     {
         // Benchmark on MS_MARCO 2.1 dataset for question answering.
@@ -78,6 +82,11 @@ internal class GPTExamples
 
         predictions.Dump();*/
     }
+
+    /// <summary>
+    /// Evaluates GPT2 embedding sentence similarity scoring on the SICK dataset.
+    /// </summary>
+    /// <returns></returns>
     internal static async Task Benchmark_Sick()
     {
         // Benchmark on SICK dataset for sentence similarity score.
@@ -107,6 +116,11 @@ internal class GPTExamples
         predictions.Dump();
     }
 
+    /// <summary>
+    /// Generates embeddings for a set of sentences.
+    /// 124M parameter model (gpt2)
+    /// </summary>
+    /// <returns></returns>
     internal static async Task Gpt2_Embeddings()
     {
         // Fix the randomness in place.
@@ -153,6 +167,11 @@ internal class GPTExamples
         by_similarity.Select(s => $"Prompt: {s.Prompt}\tDiff: {s.Difference:P}").Dump();
     }
 
+    /// <summary>
+    /// Generates embeddings for a set of sentences.
+    /// 774M parameter model (gpt2-large)
+    /// </summary>
+    /// <returns></returns>
     public static async Task Gpt2_Large_Embeddings()
     {
         // Fix the randomness in place.
@@ -184,6 +203,11 @@ internal class GPTExamples
         by_similarity.Select(s => $"Prompt: {s.Prompt}\tDiff: {s.Difference:P}").Dump();
     }
 
+    /// <summary>
+    /// Generates unconditioned (unprompted) random musings by GPT2.
+    /// 124M parameter pre-trained model (gpt2)
+    /// </summary>
+    /// <returns></returns>
     public static async Task Gpt2_124M_Unconditioned()
     {
         // Fix the randomness in place.
@@ -206,6 +230,10 @@ internal class GPTExamples
         encoding.Decode(raw_output[0].data<long>().Select(v => (int)v).ToList()).Dump();
     }
 
+    /// <summary>
+    /// Generates unconditioned (unprompted) random musings by GPT2 - 774M parameter pre-trained model (gpt2-large)
+    /// </summary>
+    /// <returns></returns>
     public static async Task Gpt2_Large_Unconditioned()
     {
         // Fix the randomness in place.
@@ -229,6 +257,10 @@ internal class GPTExamples
         encoding.Decode(raw_output[0].data<long>().Select(v => (int)v).ToList()).Dump();
     }
 
+    /// <summary>
+    /// Generates a prompted response from GPT2 - 124M parameter pre-trained model (gpt2)
+    /// </summary>
+    /// <returns></returns>
     public static async Task Gpt2_124m_Prompted()
     {
         // Fix the randomness in place.
@@ -242,6 +274,10 @@ internal class GPTExamples
         generator(gpt, "Hello, I'm a language model,").ToList().Dump();
     }
 
+    /// <summary>
+    /// Generates a prompted response from GPT2 - 774M parameter pre-trained model (gpt2-large)
+    /// </summary>
+    /// <returns></returns>
     public static async Task Gpt2_Large_Prompted()
     {
         // Fix the randomness in place.
@@ -255,7 +291,7 @@ internal class GPTExamples
         generator(gpt, "Hi, I'm a massive boat").ToList().Dump();
     }
 
-    public static async Task Gpt3TokenCounts()
+    public static async Task Gpt3_Token_Counts()
     {
         // https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
         // p50k_base: Codex models, text-davinci-002, text-davinci-003
@@ -266,7 +302,7 @@ internal class GPTExamples
         $"{tokenCount} tokens are in {prompt}".Dump();
     }
 
-    public static async Task Gpt4TokenCounts()
+    public static async Task Gpt4_Token_Counts()
     {
         // https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
         // cl100k_base:	gpt-4, gpt-3.5-turbo, text-embedding-ada-002
@@ -277,7 +313,11 @@ internal class GPTExamples
         $"{tokenCount} tokens are in {prompt}".Dump();
     }
 
-    public static async Task FineTuning()
+    /// <summary>
+    /// Work in Progress - Demonstrates fine tuning GPT2 124M parameter pre-trained model. This one requires a 12GB+ graphics card .
+    /// </summary>
+    /// <returns></returns>
+    public static async Task GPT2_Fine_Tuning()
     {
         // TODO: We're gonna need a bigger GPU...
         var gpt = await GPTModel.from_pretrained("gpt2", "cpu");

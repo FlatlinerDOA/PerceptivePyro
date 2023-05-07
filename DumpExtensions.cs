@@ -5,6 +5,11 @@
 /// </summary>
 internal static class DumpExtensions
 {
+    /// <summary>
+    /// Creates a pythonesque print string for any object.
+    /// </summary>
+    /// <param name="item">The object to stringify.</param>
+    /// <returns>A non null string.</returns>
     internal static string Stringify(this object? item) => item switch
     {
         null => "<null>",
@@ -19,8 +24,18 @@ internal static class DumpExtensions
         _ => ((object)item)?.ToString() ?? "<null>"
     };
 
+    /// <summary>
+    /// Creates a pythonesque print string for a sequence of objects.
+    /// </summary>
+    /// <param name="items">The sequence.</param>
+    /// <returns></returns>
     internal static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
- 
+
+    /// <summary>
+    /// Creates a pythonesque print string for a Torch scalar.
+    /// </summary>
+    /// <param name="item">The Torch scalar to stringify.</param>
+    /// <returns>A non null string.</returns>
     internal static string Stringify(this TorchSharp.Scalar item) =>
         item.Type switch
         {

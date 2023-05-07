@@ -1,4 +1,19 @@
-﻿namespace NanoGPTSharp;
+﻿// Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
+// Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+// Copyright (c) 2023, Andrew Chisholm
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+namespace NanoGPTSharp;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using TorchSharp.Modules;
@@ -6,15 +21,15 @@ using TorchSharp.Modules;
 public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, Tensor>
 {
     private RobertaConfig config;
-    private Embedding word_embeddings;
-    private Embedding position_embeddings;
-    private Embedding token_type_embeddings;
+    public Embedding word_embeddings;
+    public Embedding position_embeddings;
+    public Embedding token_type_embeddings;
 
     public TorchSharp.Modules.LayerNorm LayerNorm { get; }
 
-    private Dropout dropout;
-    private string position_embedding_type;
-    private int padding_idx;
+    public Dropout dropout;
+    public string position_embedding_type;
+    public int padding_idx;
 
     internal RobertaEmbeddings(RobertaConfig config) : base(nameof(RobertaEmbeddings))
     {
@@ -45,8 +60,10 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
         this.RegisterComponents();
     }
 
-    private Tensor position_ids => this.get_buffer("position_ids");
-    
+    public Tensor position_ids => this.get_buffer("position_ids");
+
+    public Tensor token_type_ids => this.get_buffer("token_type_ids");
+
     public override Tensor forward(Tensor? input_ids = null, Tensor? token_type_ids = null, Tensor? position_ids = null, Tensor? inputs_embeds = null, int past_key_values_length = 0)
     {
         if (position_ids is null)
