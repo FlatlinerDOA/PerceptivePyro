@@ -33,7 +33,7 @@ public class RobertaTokenizer
             }
         }
 
-        this.bytePairEncoding = new BytePairEncodingCore(bytePairRanks, specialTokenMappings, new Regex(patternString));
+        this.bytePairEncoding = new BytePairEncodingCore(bytePairRanks, specialTokenMappings, new Regex(patternString, RegexOptions.Compiled));
     }
 
     private static string SpecialTokenRegex(ISet<string> tokens)
@@ -51,28 +51,20 @@ public class RobertaTokenizer
     public List<int> Encode(string lineToEncode, ISet<string>? allowedSpecial = null, ISet<string>? disallowedSpecial = null)
     {
         HashSet<string> hashSet = new HashSet<string>(this.specialTokenMappings.Keys);
-        if (allowedSpecial == null)
-        {
-            allowedSpecial = new HashSet<string>();
-        }
-
-        if (disallowedSpecial == null)
-        {
-            disallowedSpecial = new HashSet<string> { "all" };
-        }
-
-        if (disallowedSpecial!.Contains("all"))
+        allowedSpecial ??= new HashSet<string>();
+        disallowedSpecial ??= new HashSet<string> { "all" };
+        if (disallowedSpecial.Contains("all"))
         {
             disallowedSpecial = new HashSet<string>(hashSet);
-            disallowedSpecial!.ExceptWith(allowedSpecial);
+            disallowedSpecial.ExceptWith(allowedSpecial);
         }
 
-        if (allowedSpecial!.Contains("all"))
+        if (allowedSpecial.Contains("all"))
         {
             allowedSpecial = hashSet;
         }
 
-        if (disallowedSpecial!.Count > 0)
+        if (disallowedSpecial.Count > 0)
         {
             string pattern = SpecialTokenRegex(new HashSet<string>(disallowedSpecial));
             Match match = Regex.Match(lineToEncode, pattern);
@@ -82,13 +74,19 @@ public class RobertaTokenizer
             }
         }
 
-        return this.bytePairEncoding.EncodeNative("<s>" + lineToEncode + "</s>", allowedSpecial).Item1;
+        return new int[] { this.specialTokenMappings.GetValueOrDefault("<s>") }.Concat(this.bytePairEncoding.EncodeNative(lineToEncode, allowedSpecial).Item1).Concat(new int[] { this.specialTokenMappings.GetValueOrDefault("</s>") }).ToList();
     }
 
-    public string Decode(List<int> inputTokensToDecode)
+    public string Decode(List<int> inputTokensToDecode, bool trimSentenceTokens = true)
     {
         List<byte> list = this.bytePairEncoding.DecodeNative(inputTokensToDecode.ToArray());
-        return Encoding.UTF8.GetString(list.ToArray());
+        var decoded = Encoding.UTF8.GetString(list.ToArray());
+        if (trimSentenceTokens)
+        {
+            return decoded.Replace("<s>", string.Empty).Replace("</s>", string.Empty);
+        }
+        
+        return decoded;
     }
 
     private static int GetMaxValueFromDictionary(Dictionary<byte[], int> dictionary)
@@ -138,7 +136,7 @@ public class RobertaTokenizer
                  from vocab in prop.Value.EnumerateObject()
                  where vocab.Name == "vocab"
                  from v in vocab.Value.EnumerateObject()
-                 select new KeyValuePair<byte[], int>(encoding.GetBytes(v.Name), v.Value.GetInt32());
+                 select new KeyValuePair<byte[], int>(encoding.GetBytes(v.Name.Replace('Ġ', ' ')), v.Value.GetInt32());
         var tqd = new Dictionary<byte[], int>(tq, new ByteArrayEqualityComparer());
 
         using var sfs = File.OpenRead(specialTokensFilePath);
