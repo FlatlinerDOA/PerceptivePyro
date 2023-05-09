@@ -119,7 +119,21 @@ namespace NanoGPTSharp
             var offset = index.GetOffset(list.Count);
             return list.Skip(offset).Take(1).ToList();
         }
-        
+
+        public static Tensor mean_pooling(this Tensor token_embeddings, Tensor attention_mask)
+        {
+            var input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).@float();
+            return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min: 1e-9);
+        }
+
+        public static IEnumerable<T[]> Enumerate2d<T>(this Tensor matrix) where T : unmanaged
+        {
+            for (int i = 0; i < matrix.shape[0]; i++)
+            {
+                yield return matrix[i, ..].data<T>().ToArray();
+            }
+        }
+
         /// <summary>
         /// Wraps a function into a Pytorch module so that the model is self describing
         /// as to what activation function is used, when printing out the model.

@@ -20,16 +20,16 @@ using TorchSharp.Modules;
 
 public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, Tensor>
 {
-    private RobertaConfig config;
-    public Embedding word_embeddings;
-    public Embedding position_embeddings;
-    public Embedding token_type_embeddings;
+    private readonly RobertaConfig config;
+    public readonly Embedding word_embeddings;
+    public readonly Embedding position_embeddings;
+    public readonly Embedding token_type_embeddings;
 
-    public TorchSharp.Modules.LayerNorm LayerNorm { get; }
+    public readonly TorchSharp.Modules.LayerNorm LayerNorm;
 
-    public Dropout dropout;
-    public string position_embedding_type;
-    public int padding_idx;
+    public readonly Dropout dropout;
+    public readonly string position_embedding_type;
+    public readonly int padding_idx;
 
     internal RobertaEmbeddings(RobertaConfig config) : base(nameof(RobertaEmbeddings))
     {
@@ -53,7 +53,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
 
         this.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)));
         this.register_buffer("token_type_ids", torch.zeros(this.position_ids.size(), dtype: torch.@long)); // TODO: persistent: false not available with TorchSharp?
-
+        
         this.padding_idx = config.pad_token_id;
 
         this.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size, padding_idx: this.padding_idx);

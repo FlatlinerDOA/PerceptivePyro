@@ -189,9 +189,46 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
             encoder_outputs.attentions,
             encoder_outputs.cross_attentions);
     }
-    public static async Task<RobertaModel> from_pretrained(string model)
+    public static async Task<RobertaModel> from_pretrained(string model_type, Device? device = null, RobertaConfig override_args = null)
     {
-        throw new NotImplementedException();
+        var config = new RobertaConfig()
+        {
+        };
+        
+        
+        var roberta = new RobertaModel(config);
+        if (device is not null)
+        {
+            roberta.to(device);
+        }
+
+        var model_tensors = roberta.state_dict();
+        
+        var ignore_buffers = new HashSet<string>
+        {
+            "embeddings.token_type_ids"
+        };
+        var model_tensors_to_load = (
+            from kv in model_tensors
+            where !ignore_buffers.Contains(kv.Key) select kv); // discard buffers, not a param
+        var safeTensorsFilePath = await SafeTensors.DownloadWeightsAsync(model_type);
+        var loaded_tensors = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
+            select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
+
+        foreach (var (name, target_tensor) in model_tensors_to_load)
+        {
+            var loaded_tensor = loaded_tensors.GetValueOrDefault(name);
+            Contract.Assert(loaded_tensor is not null, $"{name} tensor not found");
+            // vanilla copy over the other parameters
+            Contract.Assert(loaded_tensor.shape.SequenceEqual(target_tensor.shape), $"Size of loaded tensor {name}: ({loaded_tensor.shape.Stringify()}) does not match configured ({target_tensor.shape.Stringify()})");
+            using (var _ = torch.no_grad())
+            {
+                target_tensor.copy_(loaded_tensor);
+            }
+        }
+        
+        roberta.eval();
+        return roberta;
     }
 
     private Tensor invert_attention_mask(Tensor encoder_attention_mask, ScalarType? dtype = null)
@@ -226,8 +263,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         }
         else
         {
-            // TODO: head_mask = [None] * num_hidden_layers;
-            throw new ArgumentException("head_mask must be specified", nameof(head_mask));
+            return null;
         }
         return head_mask;
     }
@@ -278,14 +314,10 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    private Tensor get_extended_attention_mask(Tensor attention_mask, Tensor input_shape, Device? device = null, ScalarType? dtype = null)
+    private Tensor get_extended_attention_mask(Tensor attention_mask, Tensor input_shape, Device? device = null, ScalarType? dtype = ScalarType.Float32)
     {
         var data_type = dtype ?? attention_mask.dtype;
         var device_target = device ?? attention_mask.device;
-        if (!(attention_mask.dim() == 2 && this.config.is_decoder is true))
-        {
-            throw new NotSupportedException("Legacy config");
-        }
 
         Tensor extended_attention_mask;
         if (attention_mask.dim() == 3)
@@ -335,5 +367,15 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
 
 
 */
+    }
+
+    public Tensor sentence_embeddings(Tensor input_ids, Tensor attention_mask)
+    {
+        using (torch.no_grad())
+        {
+            var model_output = this.call(new RobertaModelArgs(input_ids, attention_mask));
+            var sentence_embeddings = model_output.last_hidden_state.mean_pooling(attention_mask);
+            return sentence_embeddings.normalize(p: 2, dim: 1);
+        }
     }
 }

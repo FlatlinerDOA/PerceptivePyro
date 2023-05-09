@@ -48,7 +48,27 @@ public class RobertaTokenizer
         return "(" + text + ")";
     }
 
-    public List<int> Encode(string lineToEncode, ISet<string>? allowedSpecial = null, ISet<string>? disallowedSpecial = null)
+    public (Tensor input_ids, Tensor attention_mask) Tokenize(IReadOnlyList<string> linesToEncode, ISet<string>? allowedSpecial = null, ISet<string>? disallowedSpecial = null)
+    {
+        var list = linesToEncode.Select(s => this.Encode(s, allowedSpecial, disallowedSpecial).ToArray()).ToArray();
+        
+        // ASSUMPTION: <pad> token is 1
+        var max_length = list.Max(r => r.LongLength);
+        var input_ids = torch.ones(new[] { list.LongLength, max_length }, ScalarType.Int64);
+        var attention_mask = torch.zeros(new[] { list.LongLength, max_length }, ScalarType.Int64);
+        for (int i = 0; i < list.Length; i++)
+        {
+            for (int t = 0; t < list[i].LongLength; t++)
+            {
+                input_ids[i, t] = list[i][t];
+                attention_mask[i, t] = 1;
+            }
+        }
+        
+        return (input_ids, attention_mask);
+    }
+
+    public IReadOnlyList<int> Encode(string lineToEncode, ISet<string>? allowedSpecial = null, ISet<string>? disallowedSpecial = null)
     {
         HashSet<string> hashSet = new HashSet<string>(this.specialTokenMappings.Keys);
         allowedSpecial ??= new HashSet<string>();
@@ -77,7 +97,7 @@ public class RobertaTokenizer
         return new int[] { this.specialTokenMappings.GetValueOrDefault("<s>") }.Concat(this.bytePairEncoding.EncodeNative(lineToEncode, allowedSpecial).Item1).Concat(new int[] { this.specialTokenMappings.GetValueOrDefault("</s>") }).ToList();
     }
 
-    public string Decode(List<int> inputTokensToDecode, bool trimSentenceTokens = true)
+    public string Decode(IReadOnlyList<int> inputTokensToDecode, bool trimSentenceTokens = true)
     {
         List<byte> list = this.bytePairEncoding.DecodeNative(inputTokensToDecode.ToArray());
         var decoded = Encoding.UTF8.GetString(list.ToArray());

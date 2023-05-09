@@ -65,7 +65,7 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, RobertaSelfAttenti
 
     private Tensor transpose_for_scores(Tensor x)
     {
-        var new_x_shape = x.size()[..-1].Concat(new long[] { this.num_attention_heads, this.attention_head_size }).ToArray();
+        var new_x_shape = x.size()[..^1].Concat(new long[] { this.num_attention_heads, this.attention_head_size }).ToArray();
         x = x.view(new_x_shape);
         return x.permute(0, 2, 1, 3);
     }
@@ -182,7 +182,7 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, RobertaSelfAttenti
 
         var context_layer = torch.matmul(attention_probs, value_layer);
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous();
-        var new_context_layer_shape = context_layer.size()[..-2].Append(this.all_head_size).ToArray();
+        var new_context_layer_shape = context_layer.size()[..^2].Append(this.all_head_size).ToArray();
         context_layer = context_layer.view(new_context_layer_shape);
         var outputs = new List<Tensor>(3)
         {

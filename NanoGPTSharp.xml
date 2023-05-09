@@ -180,6 +180,21 @@
             </summary>
             <returns></returns>
         </member>
+        <member name="M:NanoGPTSharp.Examples.RobertaExamples.Roberta_Loading_Pretrained">
+            <summary>
+            Demonstrates loading of a RobertaModel from pre-trained weights.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.RobertaExamples.Roberta_Sentence_Embeddings">
+            <summary>
+            Uses all-distilroberta-v1 to create sentence embeddings.
+            </summary>
+        </member>
+        <member name="M:NanoGPTSharp.Examples.RobertaExamples.Roberta_Sentence_Similarity">
+            <summary>
+            Uses all-distilroberta-v1 to create sentence embeddings and calculate their similarity.
+            </summary>
+        </member>
         <member name="M:NanoGPTSharp.Examples.SafeTensorsExamples.Loading_Safe_Tensors">
             <summary>
             Demonstrates loading and inspecting safe tensors.
