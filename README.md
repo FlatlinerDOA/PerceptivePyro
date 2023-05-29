@@ -4,8 +4,8 @@ This library allows you to run selected Transformer based Large Language Models 
 
 ### Key benefits
 * No python dependency
-* Just Nuget Package references
-* Can self provision models at runtime
+* Nuget package references to TorchSharp and SharpToken only
+* Can self provision pre-trained models from HuggingFace at runtime (uses .safetensors).
 
 ### Use it to
 * Load GPT-2 pre-trained weights from HuggingFace and perform inference using it.
@@ -14,8 +14,8 @@ This library allows you to run selected Transformer based Large Language Models 
 * Use a Roberta pre-trained model (all-distilroberta-v1) to perform semantic similarity scoring of sentences.
 
 ### History
-This is started as a learning exercise following along with [Andre Karpathy's Lets Build GPT: From scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY&t=3510s).
-GPT model from the ground up in C# using [TorchSharp](https://github.com/dotnet/TorchSharp)
+This started as a learning exercise following along with [Andre Karpathy's Lets Build GPT: From scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY&t=3510s).
+Let's train a GPT model from the ground up in C# using [TorchSharp](https://github.com/dotnet/TorchSharp)
 
 ### Examples:
 
