@@ -1,10 +1,23 @@
-# NanoGPTSharp
+# Perceptive Pyro
 
-This is a learning exercise following along with [Andre Karpathy's Lets Build GPT: From scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY&t=3510s).
+This library allows you to run selected Transformer based Large Language Models using just .NET and TorchSharp.
 
-We are building a small GPT model from the ground up in C# using [TorchSharp](https://github.com/dotnet/TorchSharp)
+### Key benefits
+* No python dependency
+* Just Nuget Package references
+* Can self provision models at runtime
 
-Usage:
+### Use it to
+* Train GPT-2 based models on your own data.
+* Perform classification tasks
+* Generate vector embeddings for storing in a vector database such as Pinecone, ChromaDb or Milvus
+* Perform semantic similarity scoring use a Roberta based model (all-distilroberta-v1).
+
+### History
+This is started as a learning exercise following along with [Andre Karpathy's Lets Build GPT: From scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY&t=3510s).
+GPT model from the ground up in C# using [TorchSharp](https://github.com/dotnet/TorchSharp)
+
+### Using Examples:
 
 ```
 This is just a bunch of examples of using transformer architecture all using pure C# and torch:
@@ -22,7 +35,6 @@ nanogptsharp {command}
 ```
 
 
-
 NOTE: The code has the following global usings in all files:
 
 ```
@@ -34,4 +46,3 @@ NOTE: The code has the following global usings in all files:
     using TorchSharp.Modules;
     using static TorchSharp.torch;
 ```
-
