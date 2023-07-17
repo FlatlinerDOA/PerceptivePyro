@@ -126,6 +126,12 @@ namespace NanoGPTSharp
             return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min: 1e-9);
         }
 
+        /// <summary>
+        /// Enumerates a 2d tensor (matrix), i.e. row by row, into an enumerable sequence of arrays of a specified type.
+        /// </summary>
+        /// <param name="matrix">The 2d tensor.</param>
+        /// <typeparam name="T">The return type expected.</typeparam>
+        /// <returns>An enumerable sequence of arrays</returns>
         public static IEnumerable<T[]> Enumerate2d<T>(this Tensor matrix) where T : unmanaged
         {
             for (int i = 0; i < matrix.shape[0]; i++)

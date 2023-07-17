@@ -164,7 +164,10 @@ public class RobertaTokenizer
         var special_tokens = (from prop in sjson.RootElement.EnumerateObject()
                               where prop.Value.ValueKind == JsonValueKind.String
                              select prop.Value.GetString() ?? string.Empty).ToHashSet();
-        var sq = from special_token in special_tokens
+        var mask_token = (from prop in sjson.RootElement.EnumerateObject()
+            where prop.Value.ValueKind == JsonValueKind.Object
+            select prop.Value.GetProperty("content").GetString()).ToHashSet();
+        var sq = from special_token in special_tokens.Concat(mask_token)
                  select new KeyValuePair<string, int>(special_token, tqd.GetValueOrDefault(encoding.GetBytes(special_token)));
         return (tqd, new Dictionary<string, int>(sq));
     }

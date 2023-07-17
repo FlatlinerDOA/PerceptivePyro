@@ -349,6 +349,14 @@
             <typeparam name="TResult"></typeparam>
             <returns></returns>
         </member>
+        <member name="M:NanoGPTSharp.TensorExtensions.Enumerate2d``1(TorchSharp.torch.Tensor)">
+            <summary>
+            Enumerates a 2d tensor (matrix), i.e. row by row, into an enumerable sequence of arrays of a specified type.
+            </summary>
+            <param name="matrix">The 2d tensor.</param>
+            <typeparam name="T">The return type expected.</typeparam>
+            <returns>An enumerable sequence of arrays</returns>
+        </member>
         <member name="T:NanoGPTSharp.TensorExtensions.Activation">
             <summary>
             Wraps a function into a Pytorch module so that the model is self describing
