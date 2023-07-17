@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
 /// <summary>
 /// Multiple heads of self attention, running in parallel.

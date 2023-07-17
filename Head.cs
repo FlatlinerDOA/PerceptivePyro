@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
 using static System.Math;
 using F = nn.functional;

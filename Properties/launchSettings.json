@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "NanoGPTSharp": {
+    "PerceptivePyro": {
       "commandName": "Project",
       "commandLineArgs": "gpt2_embeddings",
       "workingDirectory": "."

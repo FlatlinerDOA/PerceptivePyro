@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp.Examples;
+﻿namespace PerceptivePyro.Examples;
 
 internal class BigramLanguageModelExamples
 {

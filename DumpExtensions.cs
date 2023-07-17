@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
 /// <summary>
 /// LINQPad style dump extensions for "stringify" nicely and printing out to the console.

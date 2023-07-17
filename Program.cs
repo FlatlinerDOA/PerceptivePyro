@@ -1,6 +1,6 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
-using NanoGPTSharp.Examples;
+using PerceptivePyro.Examples;
 using System;
 using System.Linq;
 using System.Linq.Expressions;
