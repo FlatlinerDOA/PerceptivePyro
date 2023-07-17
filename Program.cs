@@ -1,10 +1,12 @@
-﻿using System.Linq.Expressions;
+﻿namespace PerceptivePyro;
+
+using PerceptivePyro.Examples;
+using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using NanoGPTSharp.Examples;
-
-namespace NanoGPTSharp;
 
 internal class Program
 {

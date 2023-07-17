@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static Tensorboard.TensorShapeProto.Types;
 
-namespace NanoGPTSharp
+namespace PerceptivePyro
 {
     public static class TensorExtensions
     {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using F = TorchSharp.torch.nn.functional;
 
-namespace NanoGPTSharp.Examples
+namespace PerceptivePyro.Examples
 {
     internal class SelfAttentionExamples
     {

@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp.Examples;
+﻿namespace PerceptivePyro.Examples;
 
 using SharpToken;
 using System;
@@ -15,7 +15,7 @@ internal class GPTExamples
     {
         // Benchmark on MS_MARCO 2.1 dataset for question answering.
         // https://huggingface.co/datasets/ms_marco
-        using var file = File.OpenRead(@"D:\Dev\NanoGPTSharp\datasets\ms_marco\dev_v2.1.json");
+        using var file = File.OpenRead(@"D:\Dev\PerceptivePyro\datasets\ms_marco\dev_v2.1.json");
         var doc = await JsonDocument.ParseAsync(file);
         var q = doc.RootElement.GetProperty("query").EnumerateObject().OfType<JsonProperty>();
         var p = doc.RootElement.GetProperty("passages");
@@ -90,7 +90,7 @@ internal class GPTExamples
     internal static async Task Benchmark_Sick()
     {
         // Benchmark on SICK dataset for sentence similarity score.
-        var data = from line in File.ReadLines(@"D:\Dev\NanoGPTSharp\datasets\Sick\SICK.txt").Skip(1)
+        var data = from line in File.ReadLines(@"D:\Dev\PerceptivePyro\datasets\Sick\SICK.txt").Skip(1)
                    where !string.IsNullOrWhiteSpace(line)
                    let cells = line.Split('\t')
                    where cells.Length > 0

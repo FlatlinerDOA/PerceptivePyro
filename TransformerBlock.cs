@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
 /// <summary>
 /// Transformer block: Communication between tokens followed by computation on tokens.

@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "NanoGPTSharp": {
+    "PerceptivePyro": {
       "commandName": "Project",
       "commandLineArgs": "roberta_sentence_similarity",
       "workingDirectory": "."

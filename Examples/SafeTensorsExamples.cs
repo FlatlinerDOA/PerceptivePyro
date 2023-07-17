@@ -1,5 +1,5 @@
 ﻿
-namespace NanoGPTSharp.Examples;
+namespace PerceptivePyro.Examples;
 
 public static class SafeTensorsExamples
 {
