@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 
 using System.Collections.Generic;
 

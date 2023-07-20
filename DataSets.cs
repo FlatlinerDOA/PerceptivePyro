@@ -1,4 +1,4 @@
-namespace NanoGPTSharp;
+namespace PerceptivePyro;
 
 /// <summary>
 /// Provides simplified access to data sets by downloading them first.

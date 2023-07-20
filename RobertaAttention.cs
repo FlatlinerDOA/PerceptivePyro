@@ -13,7 +13,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-namespace NanoGPTSharp;
+namespace PerceptivePyro;
 
 public readonly record struct RobertaAttentionArgs(Tensor? attention_mask = null, Tensor? head_mask = null, Tensor? encoder_hidden_states = null, Tensor? encoder_attention_mask = null, IReadOnlyList<Tensor>? past_key_value = null, bool output_attentions = false);
 

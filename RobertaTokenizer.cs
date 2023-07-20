@@ -1,4 +1,4 @@
-﻿namespace NanoGPTSharp;
+﻿namespace PerceptivePyro;
 using SharpToken;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;

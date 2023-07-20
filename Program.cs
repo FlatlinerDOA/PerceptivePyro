@@ -1,4 +1,6 @@
-﻿namespace PerceptivePyro;
+﻿using PerceptivePyro.Examples;
+
+namespace PerceptivePyro;
 
 using PerceptivePyro.Examples;
 using System;
@@ -16,7 +18,8 @@ internal class Program
         typeof(BigramLanguageModelExamples),
         typeof(RobertaExamples),
         typeof(SafeTensorsExamples),
-        typeof(SelfAttentionExamples)
+        typeof(SelfAttentionExamples),
+        typeof(SemanticDictionaryExamples)
     };
 
     const string Help =

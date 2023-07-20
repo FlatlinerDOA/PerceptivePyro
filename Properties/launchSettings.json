@@ -2,7 +2,7 @@
   "profiles": {
     "PerceptivePyro": {
       "commandName": "Project",
-      "commandLineArgs": "roberta_sentence_similarity",
+      "commandLineArgs": "Semantic_Dictionary_TopK",
       "workingDirectory": "."
     }
   }
