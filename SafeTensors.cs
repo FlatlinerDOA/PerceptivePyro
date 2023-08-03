@@ -1,12 +1,8 @@
-﻿namespace PerceptivePyro;
-
-using System;
-using System.Collections.Generic;
+﻿using System.Diagnostics.Contracts;
 using System.Text;
-using System.IO;
 using System.Text.Json;
-using System.Diagnostics.Contracts;
-using System.Runtime.CompilerServices;
+
+namespace PerceptivePyro;
 
 /// <summary>
 /// .NET 
@@ -44,11 +40,11 @@ public static class SafeTensors
         Contract.Assert(metadataJson != null, "Invalid .safetensors file, metadata is null");
         var doc = JsonDocument.Parse(metadataJson);
         var metadata = from e in doc.RootElement.EnumerateObject()
-                    select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
+            select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
         ////var metadata = JsonSerializer.Deserialize<IEnumerable<(string Name, SafeTensorMetadata Metadata)>(metadataJson);
 
         var result = new Dictionary<string, Tensor>();
-        
+
         // Read them out in order, for file system cache's sake.
         foreach (var item in metadata.OrderBy(m => m.Value.data_offsets?[0] ?? 0))
         {
@@ -73,7 +69,7 @@ public static class SafeTensors
         Contract.Assert(metadataJson != null, "Invalid .safetensors file, metadata is null");
         var doc = JsonDocument.Parse(metadataJson);
         var metadata = from e in doc.RootElement.EnumerateObject()
-                       select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
+            select (Key: e.Name, Value: e.Value.Deserialize<SafeTensorMetadata>());
         return metadata.OrderBy(m => m.Value.data_offsets?[0] ?? 0);
     }
 

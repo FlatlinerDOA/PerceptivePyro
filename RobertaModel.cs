@@ -13,15 +13,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+﻿using System.Diagnostics.Contracts;
+
 namespace PerceptivePyro;
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using TorchSharp.Modules;
 using F = TorchSharp.torch.nn.functional;
 
 public record RobertaModelArgs(
@@ -38,7 +33,6 @@ public record RobertaModelArgs(
     bool? output_attentions = null,
     bool? output_hidden_states = null);
 
-
 /// <summary>
 /// TorchLib Roberta Transformer (from HuggingFace).
 /// Code ported from https://github.com/huggingface/transformers/blob/main/src/transformers/models/roberta/modeling_roberta.py
@@ -54,7 +48,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
     {
         Contract.Assert(config.vocab_size is not 0);
         this.config = config;
-        
+
         this.embeddings = new RobertaEmbeddings(config);
         this.encoder = new RobertaEncoder(config);
 
@@ -66,6 +60,15 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         this.RegisterComponents();
     }
 
+    public RobertaConfig Config => this.config;
+    
+    public string? ModelName => this.Config._name_or_path;
+    
+    /// <summary>
+    /// Gets the maximum number of input tokens prior to tokenization, this is the maximum position embedding size, minus the Beginning of Sentence (BOS) and End of Sentence (EOS) tokens.
+    /// </summary>
+    public int MaxInputTokenLength => this.config.max_position_embeddings - 2;
+    
     public override BaseModelOutputWithPastAndCrossAttentions forward(RobertaModelArgs input)
     {
         var (
@@ -115,7 +118,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
 
         var (batch_size, seq_length) = (input_shape[0], input_shape[1]);
         var device = input_ids is not null ? input_ids.device : inputs_embeds.device;
-        
+
         var past_key_values_length = past_key_values is not null ? past_key_values[0][0].shape[2] : 0;
         if (attention_mask is null)
         {
@@ -169,7 +172,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
             (int)past_key_values_length);
 
         var encoder_outputs = this.encoder.call(
-            embedding_output, 
+            embedding_output,
             new(
                 attention_mask: extended_attention_mask,
                 head_mask: head_mask,
@@ -189,13 +192,10 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
             encoder_outputs.attentions,
             encoder_outputs.cross_attentions);
     }
-    public static async Task<RobertaModel> from_pretrained(string model_type, Device? device = null, RobertaConfig override_args = null)
+
+    public static async Task<RobertaModel> from_pretrained(string model_type, Device? device = null, RobertaConfig override_args = null, CancellationToken cancellation = default)
     {
-        var config = new RobertaConfig()
-        {
-        };
-        
-        
+        var config = await RobertaConfig.from_pretrained(model_type, cancellation);
         var roberta = new RobertaModel(config);
         if (device is not null)
         {
@@ -203,14 +203,15 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         }
 
         var model_tensors = roberta.state_dict();
-        
+
         var ignore_buffers = new HashSet<string>
         {
             "embeddings.token_type_ids"
         };
         var model_tensors_to_load = (
             from kv in model_tensors
-            where !ignore_buffers.Contains(kv.Key) select kv); // discard buffers, not a param
+            where !ignore_buffers.Contains(kv.Key)
+            select kv); // discard buffers, not a param
         var safeTensorsFilePath = await SafeTensors.DownloadWeightsAsync(model_type);
         var loaded_tensors = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
             select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
@@ -226,7 +227,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
                 target_tensor.copy_(loaded_tensor);
             }
         }
-        
+
         roberta.eval();
         return roberta;
     }
@@ -234,7 +235,8 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
     private Tensor invert_attention_mask(Tensor encoder_attention_mask, ScalarType? dtype = null)
     {
         Tensor encoder_extended_attention_mask;
-        if (encoder_attention_mask.dim() == 3) {
+        if (encoder_attention_mask.dim() == 3)
+        {
             encoder_extended_attention_mask = encoder_attention_mask[.., TensorIndex.Null, .., ..];
         }
         else if (encoder_attention_mask.dim() == 2)
@@ -251,20 +253,22 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         // /transformer/transformer_layers.py#L270
         // encoder_extended_attention_mask = (encoder_extended_attention_mask ==
         // encoder_extended_attention_mask.transpose(-1, -2))
-        encoder_extended_attention_mask = encoder_extended_attention_mask.to(dtype ?? encoder_attention_mask.dtype);  // fp16 compatibility
+        encoder_extended_attention_mask = encoder_extended_attention_mask.to(dtype ?? encoder_attention_mask.dtype); // fp16 compatibility
         encoder_extended_attention_mask = (1.0 - encoder_extended_attention_mask) * torch.finfo(encoder_extended_attention_mask.dtype).min;
         return encoder_extended_attention_mask;
     }
 
     private Tensor? get_head_mask(Tensor? head_mask, int num_hidden_layers)
     {
-        if (head_mask is not null) {
+        if (head_mask is not null)
+        {
             head_mask = this._convert_head_mask_to_5d(head_mask, num_hidden_layers);
         }
         else
         {
             return null;
         }
+
         return head_mask;
     }
 
@@ -284,7 +288,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         }
         else if (head_mask.dim() == 2)
         {
-            head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1);  // We can specify head_mask for each layer
+            head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1); // We can specify head_mask for each layer
         }
 
         Contract.Assert(head_mask.dim() == 5, $"head_mask.dim != 5, instead {head_mask.dim()}");
@@ -323,7 +327,6 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         if (attention_mask.dim() == 3)
         {
             extended_attention_mask = attention_mask[.., TensorIndex.Null, .., ..];
-
         }
         else if (attention_mask.dim() == 2)
         {
@@ -347,7 +350,7 @@ public class RobertaModel : nn.Module<RobertaModelArgs, BaseModelOutputWithPastA
         // positions we want to attend and the dtype's smallest value for masked positions.
         // Since we are adding it to the raw scores before the softmax, this is
         // effectively the same as removing these entirely.
-        extended_attention_mask = extended_attention_mask.to(data_type);  // fp16 compatibility;
+        extended_attention_mask = extended_attention_mask.to(data_type); // fp16 compatibility;
         extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(data_type).min;
         return extended_attention_mask;
 

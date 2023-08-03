@@ -1,5 +1,4 @@
-﻿
-namespace PerceptivePyro.Examples;
+﻿namespace PerceptivePyro.Examples;
 
 public static class SafeTensorsExamples
 {

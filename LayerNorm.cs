@@ -16,5 +16,5 @@ internal class LayerNorm : nn.Module<Tensor, Tensor>
         this.bias = hasBias ? nn.Parameter(torch.zeros(ndim)) : null;
     }
 
-    public override Tensor forward(Tensor input) => F.layer_norm(input, this.weight.shape, this.weight, this.bias);    
+    public override Tensor forward(Tensor input) => F.layer_norm(input, this.weight.shape, this.weight, this.bias);
 }

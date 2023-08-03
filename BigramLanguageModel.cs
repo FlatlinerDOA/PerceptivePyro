@@ -25,7 +25,7 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
             .Append(("norm", nn.LayerNorm(n_embd)));
         this.blocks = nn.Sequential(layers);
         this.lm_head = nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
-        
+
         this.RegisterComponents();
     }
 
@@ -39,19 +39,19 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
         var x = tok_emb + pos_emb; // (B, T, C)
         x = this.blocks.call(x); // Apply self-attention. (B, T, C)
         var logits = this.lm_head.call(x); // (Batch, Time, vocab_size)
-        
+
         if (targets is null)
         {
             // NOTE: logits.shape returned here when targets is null is (B,T,C)
             return (logits, null);
         }
 
-        
+
         var (b, t, c) = (logits.shape[0], logits.shape[1], logits.shape[2]);
         logits = logits.view(b * t, c);
         targets = targets.view(b * t);
         var loss = F.cross_entropy(logits, targets);
-        
+
         // NOTE: logits.shape returned here is (B*T,C)
         return (logits, loss);
     }
@@ -66,11 +66,11 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
             // get the predictions
             var (logits, __) = this.call(idx_cond, null);
             // focus only on the last time step
-            logits = logits[.., -1, ..]; 
-            
+            logits = logits[.., -1, ..];
+
             ////long lastIndex = logits.shape[0] - 1;
             ////logits = logits.narrow(0, lastIndex, 1);
-            
+
             // apply softmax to get probabilities
             var probs = F.softmax(logits, dim: -1); // (B, C)
             // sample form the distribution

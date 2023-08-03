@@ -29,6 +29,15 @@ public static class EnumerableExtensions
         }
     }
     
+    public static T[] Concat<T>(this Span<T> span1, Span<T> span2, Span<T> span3)
+    {
+        T[] result = new T[span1.Length + span2.Length + span3.Length];
+        span1.CopyTo(result);
+        span2.CopyTo(result.AsSpan(span1.Length));
+        span3.CopyTo(result.AsSpan(span1.Length + span2.Length));
+        return result;
+    }
+
     public static async IAsyncEnumerable<IReadOnlyList<T>> Paginate<T>(this IAsyncEnumerable<T> source, int pageSize, [EnumeratorCancellation] CancellationToken cancellation)
     {
         if (pageSize <= 0)

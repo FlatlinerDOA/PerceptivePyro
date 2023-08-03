@@ -1,9 +1,8 @@
-﻿namespace PerceptivePyro;
-
-using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using TorchSharp.Modules;
+
+namespace PerceptivePyro;
+
 using F = TorchSharp.torch.nn.functional;
 
 public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
@@ -28,7 +27,7 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
         var drop = nn.Dropout(config.dropout);
 
         var ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
-        
+
         // Transformer Layers
         var h = nn.ModuleList((from _ in Enumerable.Range(0, config.n_layer) select new TransformerBlock(config)).ToArray());
         this.transformer = nn.ModuleDict(
@@ -79,10 +78,10 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
         // n_layer, n_head and n_embd are determined from model_type
         var model_configs = new Dictionary<string, GPTConfig>()
         {
-            ["gpt2"] = new() { n_layer = 12, n_head = 12, n_embd = 768 },         // 124M params
+            ["gpt2"] = new() { n_layer = 12, n_head = 12, n_embd = 768 }, // 124M params
             ["gpt2-medium"] = new() { n_layer = 24, n_head = 16, n_embd = 1024 }, // 350M params
-            ["gpt2-large"] = new() { n_layer = 36, n_head = 20, n_embd = 1280 },  // 774M params
-            ["gpt2-xl"] = new() { n_layer = 48, n_head = 25, n_embd = 1600 },     // 1558M params
+            ["gpt2-large"] = new() { n_layer = 36, n_head = 20, n_embd = 1280 }, // 774M params
+            ["gpt2-xl"] = new() { n_layer = 48, n_head = 25, n_embd = 1600 }, // 1558M params
         };
 
         Contract.Assert(model_configs.ContainsKey(model_type), $"Invalid model_type: {model_type}");
@@ -106,8 +105,8 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
         // init a huggingface/transformers model
         var safeTensorsFilePath = await SafeTensors.DownloadWeightsAsync(model_type);
         var sd_hf = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
-                    where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
-                    select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
+            where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
+            select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
 
         // basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         // this means that we have to transpose these weights when we import them.
@@ -151,7 +150,7 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
 
         // Default to inference mode for most use cases.
         model.eval();
-        return model;        
+        return model;
     }
 
     public override (Tensor, Tensor?) forward(Tensor idx, Tensor? targets = null, bool embeddings_only = false)
@@ -206,10 +205,10 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
     /// </summary>
     /// <param name="non_embedding"></param>
     /// <returns></returns>
-    public long get_num_params(bool non_embedding = true) 
+    public long get_num_params(bool non_embedding = true)
     {
         var n_params = (from p in this.parameters()
-                       select p.numel()).Sum();
+            select p.numel()).Sum();
         if (non_embedding)
         {
             n_params -= this.wpe.weight?.numel() ?? 0;
@@ -263,7 +262,7 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
     /// <param name="top_k"></param>
     /// <returns></returns>
     public Tensor generate(Tensor idx, int max_new_tokens, double temperature = 1.0d, int? top_k = null)
-    {        
+    {
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
@@ -291,7 +290,7 @@ public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor?
 
             // apply softmax to convert logits to (normalized) probabilities
             using var probs = F.softmax(logits, dim: -1);
-            
+
             // sample from the distribution
             using var idx_next = torch.multinomial(probs, num_samples: 1);
 

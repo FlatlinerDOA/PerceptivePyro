@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using F = TorchSharp.torch.nn.functional;
+﻿using F = TorchSharp.torch.nn.functional;
 
 namespace PerceptivePyro.Examples;
 

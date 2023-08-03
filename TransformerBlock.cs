@@ -10,7 +10,7 @@ internal class TransformerBlock : nn.Module<Tensor, Tensor>
     public LayerNorm ln_2;
     public MultiLayerPerceptron mlp;
 
-    public TransformerBlock(GPTConfig config): this(config.n_embd, config.n_head, config.block_size, config.dropout, config.has_bias)
+    public TransformerBlock(GPTConfig config) : this(config.n_embd, config.n_head, config.block_size, config.dropout, config.has_bias)
     {
     }
 

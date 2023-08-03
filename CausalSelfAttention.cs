@@ -1,6 +1,7 @@
-﻿namespace PerceptivePyro;
+﻿using System.Diagnostics;
 
-using System.Diagnostics;
+namespace PerceptivePyro;
+
 using F = nn.functional;
 
 internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
@@ -34,10 +35,10 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         if (!this.hasFlash)
         {
             Debug.WriteLine("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0");
-            
+
             // causal mask to ensure that attention is only applied to the left in the input sequence
             this.bias = torch.tril(torch.ones(block_size, block_size))
-                                        .view(1, 1, block_size, block_size);
+                .view(1, 1, block_size, block_size);
         }
 
         this.RegisterComponents();
@@ -71,7 +72,7 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         {
             // manual implementation of attention
             var att = q.matmul(k.transpose(-2, -1)) * (1.0d / Math.Sqrt((double)k.size(-1))); // (B, nh, T, hs) -> (B, nh, hs, T)
-            att = att.masked_fill(this.bias[..,..,..(int)T,..(int)T] == 0, float.NegativeInfinity);
+            att = att.masked_fill(this.bias[.., .., ..(int)T, ..(int)T] == 0, float.NegativeInfinity);
             att = F.softmax(att, dim: -1);
             att = this.attn_dropout.call(att);
             y = att.matmul(v); // (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
@@ -84,4 +85,3 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         return y;
     }
 }
-

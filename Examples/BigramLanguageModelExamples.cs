@@ -125,7 +125,7 @@ internal class BigramLanguageModelExamples
             foreach (var t in Enumerable.Range(0, block_size))
             {
                 var context = xb[b, ..(t + 1)];
-                var target = yb[b,t];
+                var target = yb[b, t];
                 $"Batch #{b}: When input is {context.tolist().Stringify()} the target is: {target.tolist().Stringify()}".Dump();
             }
         }
@@ -141,7 +141,7 @@ internal class BigramLanguageModelExamples
         // NOTE: transformers don't seem to like high learning rates and are affected by the model size!
         // Multiples of 1e-3 or smaller please!
         var optimizer = torch.optim.AdamW(model.parameters(), lr: learning_rate);
-        
+
         // Our training loop
         foreach (var iter in Enumerable.Range(0, max_iters))
         {
@@ -169,10 +169,10 @@ internal class BigramLanguageModelExamples
     {
         // Turn off loss gradient calculations while we evaluate.
         using var _ = torch.no_grad();
-        
+
         // Setup a disposal scope to cleanup tensor memory when we are done with this eval also.
         using var __ = torch.NewDisposeScope();
-       
+
         // Switch into evaluation mode for Dropout, BatchNorm etc.
         model.eval();
 

@@ -1,7 +1,5 @@
 ﻿namespace PerceptivePyro;
 
-using System.Collections.Generic;
-
 public record BaseModelOutputWithPastAndCrossAttentions(
     Tensor last_hidden_state,
     Tensor? pooled_output,

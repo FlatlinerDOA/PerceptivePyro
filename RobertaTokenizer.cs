@@ -1,20 +1,18 @@
-﻿namespace PerceptivePyro;
-using SharpToken;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
 using System.Text;
-using static TorchSharp.torch;
-using System.Diagnostics;
 using System.Text.Json;
-using TorchSharp.Modules;
+using System.Text.RegularExpressions;
+using SharpToken;
+
+namespace PerceptivePyro;
+
+using static TorchSharp.torch;
 
 public class RobertaTokenizer
 {
     private const string RobertaPattern = "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+"; //r"""'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""";
     private readonly BytePairEncodingCore bytePairEncoding;
     private readonly Dictionary<string, int> specialTokenMappings;
-
-    public int MaxTokenValue { get; init; }
 
     private RobertaTokenizer(string patternString, Dictionary<byte[], int> bytePairRanks, Dictionary<string, int> specialTokenMappings, int? explicitNVocab = null)
     {
@@ -36,6 +34,8 @@ public class RobertaTokenizer
         this.bytePairEncoding = new BytePairEncodingCore(bytePairRanks, specialTokenMappings, new Regex(patternString, RegexOptions.Compiled));
     }
 
+    public int MaxTokenValue { get; init; }
+
     private static string SpecialTokenRegex(ISet<string> tokens)
     {
         List<string> list = new List<string>();
@@ -50,21 +50,25 @@ public class RobertaTokenizer
 
     public (Tensor input_ids, Tensor attention_mask) Tokenize(IReadOnlyList<string> linesToEncode, ISet<string>? allowedSpecial = null, ISet<string>? disallowedSpecial = null)
     {
-        var list = linesToEncode.Select(s => this.Encode(s, allowedSpecial, disallowedSpecial).ToArray()).ToArray();
-        
+        var list = linesToEncode.Select(s => this.Encode(s, allowedSpecial, disallowedSpecial)).ToList();
+        return ToTensor(list);
+    }
+
+    public static (Tensor input_ids, Tensor attention_mask) ToTensor(IReadOnlyList<IReadOnlyList<int>> lineTokens)
+    {
         // ASSUMPTION: <pad> token is 1
-        var max_length = list.Max(r => r.LongLength);
-        var input_ids = torch.ones(new[] { list.LongLength, max_length }, ScalarType.Int64);
-        var attention_mask = torch.zeros(new[] { list.LongLength, max_length }, ScalarType.Int64);
-        for (int i = 0; i < list.Length; i++)
+        var max_length = lineTokens.Max(r => r.Count);
+        var input_ids = torch.ones(new long[] { lineTokens.Count, max_length }, ScalarType.Int64);
+        var attention_mask = torch.zeros(new long[] { lineTokens.Count, max_length }, ScalarType.Int64);
+        for (int i = 0; i < lineTokens.Count; i++)
         {
-            for (int t = 0; t < list[i].LongLength; t++)
+            for (int t = 0; t < lineTokens[i].Count; t++)
             {
-                input_ids[i, t] = list[i][t];
+                input_ids[i, t] = lineTokens[i][t];
                 attention_mask[i, t] = 1;
             }
         }
-        
+
         return (input_ids, attention_mask);
     }
 
@@ -94,7 +98,7 @@ public class RobertaTokenizer
             }
         }
 
-        return new int[] { this.specialTokenMappings.GetValueOrDefault("<s>") }.Concat(this.bytePairEncoding.EncodeNative(lineToEncode, allowedSpecial).Item1).Concat(new int[] { this.specialTokenMappings.GetValueOrDefault("</s>") }).ToList();
+        return new int[] { this.specialTokenMappings.GetValueOrDefault("<s>") }.Concat(this.bytePairEncoding.EncodeNative(lineToEncode.ReplaceLineEndings("</s><s>"), allowedSpecial).Item1).Concat(new int[] { this.specialTokenMappings.GetValueOrDefault("</s>") }).ToList();
     }
 
     public string Decode(IReadOnlyList<int> inputTokensToDecode, bool trimSentenceTokens = true)
@@ -105,7 +109,7 @@ public class RobertaTokenizer
         {
             return decoded.Replace("<s>", string.Empty).Replace("</s>", string.Empty);
         }
-        
+
         return decoded;
     }
 
@@ -152,23 +156,23 @@ public class RobertaTokenizer
 
         var encoding = Encoding.UTF8;
         var tq = from prop in tjson.RootElement.EnumerateObject()
-                 where prop.Name == "model"
-                 from vocab in prop.Value.EnumerateObject()
-                 where vocab.Name == "vocab"
-                 from v in vocab.Value.EnumerateObject()
-                 select new KeyValuePair<byte[], int>(encoding.GetBytes(v.Name.Replace('Ġ', ' ')), v.Value.GetInt32());
+            where prop.Name == "model"
+            from vocab in prop.Value.EnumerateObject()
+            where vocab.Name == "vocab"
+            from v in vocab.Value.EnumerateObject()
+            select new KeyValuePair<byte[], int>(encoding.GetBytes(v.Name.Replace('Ġ', ' ')), v.Value.GetInt32());
         var tqd = new Dictionary<byte[], int>(tq, new ByteArrayEqualityComparer());
 
         using var sfs = File.OpenRead(specialTokensFilePath);
         var sjson = JsonDocument.Parse(sfs);
         var special_tokens = (from prop in sjson.RootElement.EnumerateObject()
-                              where prop.Value.ValueKind == JsonValueKind.String
-                             select prop.Value.GetString() ?? string.Empty).ToHashSet();
+            where prop.Value.ValueKind == JsonValueKind.String
+            select prop.Value.GetString() ?? string.Empty).ToHashSet();
         var mask_token = (from prop in sjson.RootElement.EnumerateObject()
             where prop.Value.ValueKind == JsonValueKind.Object
             select prop.Value.GetProperty("content").GetString()).ToHashSet();
         var sq = from special_token in special_tokens.Concat(mask_token)
-                 select new KeyValuePair<string, int>(special_token, tqd.GetValueOrDefault(encoding.GetBytes(special_token)));
+            select new KeyValuePair<string, int>(special_token, tqd.GetValueOrDefault(encoding.GetBytes(special_token)));
         return (tqd, new Dictionary<string, int>(sq));
     }
 

@@ -1,9 +1,8 @@
-﻿namespace PerceptivePyro.Examples;
-
-using SharpToken;
-using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
+using SharpToken;
+
+namespace PerceptivePyro.Examples;
 
 internal class GPTExamples
 {
@@ -21,15 +20,15 @@ internal class GPTExamples
         var p = doc.RootElement.GetProperty("passages");
         ////var a = doc.RootElement.TryGetProperty("answers", out var answers) ? answers : default;
         var tests = from question in q
-                    let passages = p.GetProperty(question.Name)
-                        .EnumerateArray()
-                        .Select(ps =>
-                        (
-                            IsSelected: ps.GetProperty("is_selected").GetInt32() == 1,
-                            Text: ps.GetProperty("passage_text").GetString()
-                        )).ToList()
-                    ////let answer = a.TryGetProperty(question.Name, out var answer) ? answer.ToString() : null
-                    select (Question: question.Value.GetString(), Passages: passages);
+            let passages = p.GetProperty(question.Name)
+                .EnumerateArray()
+                .Select(ps =>
+                (
+                    IsSelected: ps.GetProperty("is_selected").GetInt32() == 1,
+                    Text: ps.GetProperty("passage_text").GetString()
+                )).ToList()
+            ////let answer = a.TryGetProperty(question.Name, out var answer) ? answer.ToString() : null
+            select (Question: question.Value.GetString(), Passages: passages);
 
         // Fix the randomness in place.
         set_seed(1337);
@@ -43,20 +42,20 @@ internal class GPTExamples
         var count = 0;
         var results =
             (from test in tests.Take(100)
-            let query_embed = output_embeddings(gpt, new[] { test.Question }, "cuda").First()
-            let passage_embed = output_embeddings(gpt, test.Passages.Select(p => p.Text).ToList(), "cuda").Zip(test.Passages.Select(p => p.IsSelected), (ab, c) => (ab.Prompt, ab.Embeddings, IsSelected: c ? 1 : 0))
-            let r = passage_embed
-                .Select(s => (
-                    query_embed.Prompt,
-                    s.Prompt,
-                    Prediction: 1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings),
-                    Actual: s.IsSelected,
-                    Loss: (1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings)) - s.IsSelected
-                ))
-                .OrderByDescending(x => x.Prediction)
-                .Take(TOP_K)
-                .ToList()
-            select r).ToList();
+                let query_embed = output_embeddings(gpt, new[] { test.Question }, "cuda").First()
+                let passage_embed = output_embeddings(gpt, test.Passages.Select(p => p.Text).ToList(), "cuda").Zip(test.Passages.Select(p => p.IsSelected), (ab, c) => (ab.Prompt, ab.Embeddings, IsSelected: c ? 1 : 0))
+                let r = passage_embed
+                    .Select(s => (
+                        query_embed.Prompt,
+                        s.Prompt,
+                        Prediction: 1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings),
+                        Actual: s.IsSelected,
+                        Loss: (1f - HNSW.Net.CosineDistance.SIMDForUnits(query_embed.Embeddings, s.Embeddings)) - s.IsSelected
+                    ))
+                    .OrderByDescending(x => x.Prediction)
+                    .Take(TOP_K)
+                    .ToList()
+                select r).ToList();
 
         foreach (var result in results)
         {
@@ -91,10 +90,10 @@ internal class GPTExamples
     {
         // Benchmark on SICK dataset for sentence similarity score.
         var data = from line in File.ReadLines(@"D:\Dev\PerceptivePyro\datasets\Sick\SICK.txt").Skip(1)
-                   where !string.IsNullOrWhiteSpace(line)
-                   let cells = line.Split('\t')
-                   where cells.Length > 0
-                   select (Id: cells[0], SentenceA: cells[1], SentenceB: cells[2], Relatedness: float.Parse(cells[4]));
+            where !string.IsNullOrWhiteSpace(line)
+            let cells = line.Split('\t')
+            where cells.Length > 0
+            select (Id: cells[0], SentenceA: cells[1], SentenceB: cells[2], Relatedness: float.Parse(cells[4]));
 
         var a = data.Select(d => d.SentenceA).Take(100).ToList();
         var b = data.Select(d => d.SentenceB).Take(100).ToList();
@@ -110,7 +109,7 @@ internal class GPTExamples
         var a_embed = output_embeddings(gpt, a, "cuda");
         var b_embed = output_embeddings(gpt, b, "cuda");
         var predictions = a_embed.Zip(b_embed, true_label)
-            .Select(s => (s.First.Prompt, s.Second.Prompt, Prediction: 1f-HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings), Actual: s.Third, Loss: (1f-HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings)) - s.Third))
+            .Select(s => (s.First.Prompt, s.Second.Prompt, Prediction: 1f - HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings), Actual: s.Third, Loss: (1f - HNSW.Net.CosineDistance.SIMDForUnits(s.First.Embeddings, s.Second.Embeddings)) - s.Third))
             .OrderByDescending(x => x.Loss)
             .ToArray();
         predictions.Dump();
@@ -148,14 +147,14 @@ internal class GPTExamples
             "The bright sun rays illuminate the meadow with a warm and comforting light.",
             "I love eating pizza, it's my favorite food in the world.",
             "My favorite hobby is hiking, I enjoy exploring new trails and taking in the scenery.",
-            "The concert was amazing, the band played all my favorite songs and the atmosphere was electric.", 
+            "The concert was amazing, the band played all my favorite songs and the atmosphere was electric.",
         };
 
         var s = Stopwatch.StartNew();
-        
+
         // Convert sentences to GPT's semantic embedding representation.
         var sentences = output_embeddings(gpt, sentence_data, "cuda").Dump();
-        
+
         s.ElapsedMilliseconds.Dump();
 
         // Convert the query to GPT's semantic embedding representation.
@@ -219,13 +218,13 @@ internal class GPTExamples
 
         // tiktoken style encoding of text into BPE (Byte pair encodings)
         var encoding = GptEncoding.GetEncoding("r50k_base");
-        
+
         // Start with a single empty token as the starting context, so that GPT2 can get creative with what comes next.
         var gpt_context = torch.zeros(new[] { 1L, 1L }, dtype: torch.@long, device: device);
-        
+
         // Run the prediction for up to 200 tokens.
         var raw_output = gpt.generate(gpt_context, max_new_tokens: 200);
-        
+
         // Decode back into human readable form
         encoding.Decode(raw_output[0].data<long>().Select(v => (int)v).ToList()).Dump();
     }
@@ -390,7 +389,7 @@ internal class GPTExamples
         {
             var output = gpt.generate(gpt_context, max_new_tokens: max_length, temperature: 0.8d, top_k: 200);
             output.Dump();
-            yield return encoding.Decode(output[0].data<long>().Select(v => (int)v).ToList());      
+            yield return encoding.Decode(output[0].data<long>().Select(v => (int)v).ToList());
         }
     }
 

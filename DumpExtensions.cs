@@ -29,7 +29,7 @@ internal static class DumpExtensions
     /// </summary>
     /// <param name="items">The sequence.</param>
     /// <returns></returns>
-    internal static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
+    internal static string Stringify(this IEnumerable items) => "[ " + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
 
     /// <summary>
     /// Creates a pythonesque print string for a Torch scalar.
@@ -61,4 +61,3 @@ internal static class DumpExtensions
         return item;
     }
 }
-

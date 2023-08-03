@@ -14,12 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 namespace PerceptivePyro;
+﻿using System.Diagnostics;
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using TorchSharp.Modules;
+namespace PerceptivePyro;
 
 public readonly record struct RobertaEncoderArgs(
     Tensor? attention_mask = null,
@@ -34,8 +31,8 @@ public readonly record struct RobertaEncoderArgs(
 public class RobertaEncoder : nn.Module<Tensor, RobertaEncoderArgs, BaseModelOutputWithPastAndCrossAttentions>
 {
     private RobertaConfig config;
-    private ModuleList<RobertaLayer> layer;
     private bool gradient_checkpointing;
+    private ModuleList<RobertaLayer> layer;
 
     public RobertaEncoder(RobertaConfig config) : base(nameof(RobertaEncoder))
     {
@@ -85,11 +82,11 @@ public class RobertaEncoder : nn.Module<Tensor, RobertaEncoderArgs, BaseModelOut
                 layer_outputs = layer_module.forward(
                     hidden_states,
                     new(attention_mask,
-                    layer_head_mask,
-                    encoder_hidden_states,
-                    encoder_attention_mask,
-                    past_key_value is not null ? new List<Tensor> { past_key_value } : null,
-                    output_attentions));
+                        layer_head_mask,
+                        encoder_hidden_states,
+                        encoder_attention_mask,
+                        past_key_value is not null ? new List<Tensor> { past_key_value } : null,
+                        output_attentions));
             }
 
             hidden_states = layer_outputs[0];
@@ -103,7 +100,7 @@ public class RobertaEncoder : nn.Module<Tensor, RobertaEncoderArgs, BaseModelOut
                 all_self_attentions.Add(layer_outputs[1]);
                 if (this.config.add_cross_attention is true)
                 {
-                    all_cross_attentions.Add(layer_outputs[2]); 
+                    all_cross_attentions.Add(layer_outputs[2]);
                 }
             }
         }
@@ -113,6 +110,6 @@ public class RobertaEncoder : nn.Module<Tensor, RobertaEncoderArgs, BaseModelOut
             all_hidden_states.Add(hidden_states);
         }
 
-        return new(last_hidden_state: hidden_states, null, past_key_values: next_decoder_cache, hidden_states: all_hidden_states, attentions: all_self_attentions, cross_attentions: all_cross_attentions);  
+        return new(last_hidden_state: hidden_states, null, past_key_values: next_decoder_cache, hidden_states: all_hidden_states, attentions: all_self_attentions, cross_attentions: all_cross_attentions);
     }
 }

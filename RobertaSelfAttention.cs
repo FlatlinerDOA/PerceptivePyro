@@ -1,28 +1,11 @@
-﻿// Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-// Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-// Copyright (c) 2023, Andrew Chisholm
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+﻿using System.Diagnostics.Contracts;
+
 namespace PerceptivePyro;
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using TorchSharp.Modules;
 using static TorchSharp.torch;
 
 public record struct RobertaSelfAttentionArgs(Tensor? attention_mask = null, Tensor? head_mask = null, Tensor? encoder_hidden_states = null, Tensor? encoder_attention_mask = null, IReadOnlyList<Tensor>? past_key_value = null, bool? output_attentions = null);
+
 ////public record RobertaSelfAttentionOutput(Tensor context_layer, Tensor? attention_probs, IReadOnlyList<Tensor>? past_key_value);
 public partial class RobertaSelfAttention : nn.Module<Tensor, RobertaSelfAttentionArgs, IReadOnlyList<Tensor>>
 {
@@ -54,7 +37,8 @@ public partial class RobertaSelfAttention : nn.Module<Tensor, RobertaSelfAttenti
 
         this.dropout = nn.Dropout(config.attention_probs_dropout_prob);
         this.position_embedding_type = position_embedding_type ?? config.position_embedding_type ?? "absolute";
-        if (this.position_embedding_type == "relative_key" || this.position_embedding_type == "relative_key_query") {
+        if (this.position_embedding_type == "relative_key" || this.position_embedding_type == "relative_key_query")
+        {
             this.max_position_embeddings = config.max_position_embeddings;
             this.distance_embedding = nn.Embedding(2 * config.max_position_embeddings - 1, this.attention_head_size);
         }

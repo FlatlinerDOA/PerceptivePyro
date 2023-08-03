@@ -1,28 +1,13 @@
-﻿// Copyright 2018 The Google AI Language Team Authors and The HuggingFace Inc. team.
-// Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
-// Copyright (c) 2023, Andrew Chisholm
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-namespace PerceptivePyro;
+﻿namespace PerceptivePyro;
 
 public readonly record struct RobertaAttentionArgs(Tensor? attention_mask = null, Tensor? head_mask = null, Tensor? encoder_hidden_states = null, Tensor? encoder_attention_mask = null, IReadOnlyList<Tensor>? past_key_value = null, bool output_attentions = false);
 
 public class RobertaAttention : nn.Module<Tensor, RobertaAttentionArgs, IReadOnlyList<Tensor>>
 {
     private readonly RobertaConfig config;
-    private readonly RobertaSelfAttention self;
     private readonly RobertaSelfOutput output;
     private readonly HashSet<int> pruned_heads;
+    private readonly RobertaSelfAttention self;
 
     public RobertaAttention(RobertaConfig config, string position_embedding_type = null) : base(nameof(RobertaAttention))
     {
@@ -59,13 +44,13 @@ public class RobertaAttention : nn.Module<Tensor, RobertaAttentionArgs, IReadOnl
         var self_outputs = this.self.call(
             hidden_states,
             new(optional.attention_mask,
-            optional.head_mask,
-            optional.encoder_hidden_states,
-            optional.encoder_attention_mask,
-            optional.past_key_value,
-            optional.output_attentions));
+                optional.head_mask,
+                optional.encoder_hidden_states,
+                optional.encoder_attention_mask,
+                optional.past_key_value,
+                optional.output_attentions));
         var attention_output = this.output.call(self_outputs[0], hidden_states);
-        var outputs = new[] { attention_output }.Concat(self_outputs.Skip(1)).ToList();  // add attentions if we output them
+        var outputs = new[] { attention_output }.Concat(self_outputs.Skip(1)).ToList(); // add attentions if we output them
         return outputs;
     }
 }

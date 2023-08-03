@@ -1,17 +1,20 @@
-﻿using PerceptivePyro.Examples;
+﻿using System.Linq.Expressions;
+using System.Reflection;
+using System.Xml.Linq;
+using PerceptivePyro.Examples;
 
 namespace PerceptivePyro;
 
-using PerceptivePyro.Examples;
-using System;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Xml.Linq;
-using System.Xml.XPath;
-
 internal class Program
 {
+    const string Help =
+        """
+        This is just a bunch of examples of using transformer architecture all using pure C# and torch:
+
+        Examples are:
+
+        """;
+
     private static readonly Type[] ExampleTypes = new[]
     {
         typeof(GPTExamples),
@@ -21,14 +24,6 @@ internal class Program
         typeof(SelfAttentionExamples),
         typeof(SemanticDictionaryExamples)
     };
-
-    const string Help =
-        """
-        This is just a bunch of examples of using transformer architecture all using pure C# and torch:
-
-        Examples are:
-
-        """;
 
     /* benchmark_msmarco - Evaluates GPT2 embedding sentence similarity scoring on the MS MARCO V2.1 dataset.
        benchmark_sick - Evaluates GPT2 embedding sentence similarity scoring on the SICK dataset.
@@ -60,12 +55,12 @@ internal class Program
     private static IEnumerable<(string Name, Func<Task> Function, string Help)> GetExamples(IEnumerable<Type> exampleTypes)
     {
         var q = from type in exampleTypes
-                from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public)
-                select (
-                    Name: method.Name.ToLowerInvariant(),
-                    Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
-                    Help: GetHelpForMethod(type, method)
-                );
+            from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            select (
+                Name: method.Name.ToLowerInvariant(),
+                Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
+                Help: GetHelpForMethod(type, method)
+            );
         return q;
     }
 
@@ -79,10 +74,10 @@ internal class Program
 
         var expected_node = $"M:{method.DeclaringType.FullName}.{method.Name}";
         var method_summary = from members in XElement.Load(xmlFilename).Elements("members")
-                      from member in members.Elements("member")
-                      where (string?)member.Attribute("name") == expected_node
-                      select (string?)member.Element("summary");
-        
+            from member in members.Elements("member")
+            where (string?)member.Attribute("name") == expected_node
+            select (string?)member.Element("summary");
+
         return method_summary.FirstOrDefault()?.Trim();
     }
 

@@ -11,7 +11,7 @@ internal class MultiHeadAttention : nn.Module<Tensor, Tensor>
 
     internal MultiHeadAttention(int num_heads, int block_size, int n_embd, int head_size, double dropout) : base(nameof(Head))
     {
-        this.heads = nn.ModuleList<Head>(Enumerable.Range(0, num_heads).Select(h => new Head(block_size, n_embd, head_size,dropout)).ToArray());
+        this.heads = nn.ModuleList<Head>(Enumerable.Range(0, num_heads).Select(h => new Head(block_size, n_embd, head_size, dropout)).ToArray());
         this.proj = nn.Linear(n_embd, n_embd);
         this.dropout = nn.Dropout(dropout);
         this.RegisterComponents();

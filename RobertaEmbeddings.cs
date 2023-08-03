@@ -13,10 +13,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+﻿using System.Diagnostics.Contracts;
+
 namespace PerceptivePyro;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using TorchSharp.Modules;
 
 public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, Tensor>
 {
@@ -53,7 +52,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
 
         this.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)));
         this.register_buffer("token_type_ids", torch.zeros(this.position_ids.size(), dtype: torch.@long)); // TODO: persistent: false not available with TorchSharp?
-        
+
         this.padding_idx = config.pad_token_id;
 
         this.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size, padding_idx: this.padding_idx);
@@ -99,7 +98,7 @@ public class RobertaEmbeddings : nn.Module<Tensor, Tensor, Tensor, Tensor, int, 
         }
 
         inputs_embeds ??= this.word_embeddings.forward(input_ids);
-        
+
         var token_type_embeddings = this.token_type_embeddings.forward(token_type_ids);
         var embeddings = inputs_embeds + token_type_embeddings;
 
