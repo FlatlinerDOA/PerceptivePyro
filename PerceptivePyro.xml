@@ -254,6 +254,11 @@
             One head of self attention
             </summary>
         </member>
+        <member name="T:PerceptivePyro.ITokenSplitter">
+            <summary>
+            Splitter should always include the splitting token at the end.
+            </summary>
+        </member>
         <member name="T:PerceptivePyro.LayerNorm">
             <summary>
             LayerNorm but with an optional bias. PyTorch doesn't support simply hasBias:False
@@ -288,6 +293,11 @@
             <summary>
             TorchLib Roberta Transformer (from HuggingFace).
             Code ported from https://github.com/huggingface/transformers/blob/main/src/transformers/models/roberta/modeling_roberta.py
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.RobertaModel.MaxInputTokenLength">
+            <summary>
+            Gets the maximum number of input tokens prior to tokenization, this is the maximum position embedding size, minus the Beginning of Sentence (BOS) and End of Sentence (EOS) tokens.
             </summary>
         </member>
         <member name="M:PerceptivePyro.RobertaModel._convert_head_mask_to_5d(TorchSharp.torch.Tensor,System.Int32,System.Nullable{TorchSharp.torch.ScalarType})">
@@ -332,6 +342,155 @@
             <returns>The full path to the model file.</returns>
             <exception cref="T:System.Net.Http.HttpRequestException">Http request failed.</exception>
             <exception cref="T:System.IO.IOException">Disk access failed to write the file.</exception>
+        </member>
+        <member name="T:PerceptivePyro.SemanticDictionary`2">
+            <summary>
+            A semantic dictionary allows searching for nearest neighbours by the semantic content of the <typeparamref name="TValue"/>.
+            You provide a content selector function to get the semantic content to be indexed. An embedding is created for that content and then you can perform <see cref="M:PerceptivePyro.SemanticDictionary`2.GetBatchTop(System.Collections.Generic.IReadOnlyList{System.String},System.Int32)"/> to get the top N most similar results. 
+            </summary>
+            <typeparam name="TKey">The key of the content being indexed.</typeparam>
+            <typeparam name="TValue">The content of the content being indexed.</typeparam>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.QueryChunkSize">
+            <summary>
+            Gets the size of each query chunk.
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.MaximumCorpusSize">
+            <summary>
+            Gets the size of each query chunk.
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.CorpusChunkSize">
+            <summary>
+            Gets the size of each query chunk.
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.ExcerptSize">
+            <summary>
+            Gets the maximum number of tokens the model can handle as input.
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.IsReIndexRequired">
+            <summary>
+            Gets a value indicating whether a re-index is required. This occurs when the fill factor of the corpus drops below 75%.
+            </summary>
+        </member>
+        <member name="P:PerceptivePyro.SemanticDictionary`2.MaximumCorpusIndex">
+            <summary>
+            Gets the maximum number of items that have ever been added to the corpus since it was last cleared or re-indexed.
+            </summary>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Add(`0,`1)">
+            <summary>
+            Adds or replaces a single item by key (thread-safe).
+            </summary>
+            <param name="item">The item to be added to the dictionary.</param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Add(System.Collections.Generic.KeyValuePair{`0,`1})">
+            <summary>
+            Adds or replaces a single item by key (thread-safe).
+            </summary>
+            <param name="item">The item to be added to the dictionary.</param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.ContainsKey(`0)">
+            <summary>
+            Gets a value indicating whether the key is present in this dictionary (thread-safe).
+            </summary>
+            <param name="key">The key to check for.</param>
+            <returns>True if found, otherwise false.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Remove(`0)">
+            <summary>
+            Removes a single item by key (thread-safe).
+            </summary>
+            <param name="item">The item to be added to the dictionary.</param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.GetEnumerator">
+            <summary>
+            Gets an enumerator to the dictionary (WARNING, performs a thread-safe copy of entire list).
+            </summary>
+            <returns>The enumerator.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.System#Collections#IEnumerable#GetEnumerator">
+            <summary>
+            Gets an enumerator to the dictionary (not thread-safe).
+            </summary>
+            <returns>The enumerator.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Clear">
+            <summary>
+            Clears the entire contents of the dictionary (thread-safe).
+            </summary>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Contains(System.Collections.Generic.KeyValuePair{`0,`1})">
+            <summary>
+            Determines if the key of the item is contained by this dictionary (Important does not check the value) (thread-safe).
+            </summary>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.CopyTo(System.Collections.Generic.KeyValuePair{`0,`1}[],System.Int32)">
+            <summary>
+            Copies the entire contents of the dictionary to part of a target array (thread-safe).
+            </summary>
+            <param name="array"></param>
+            <param name="arrayIndex"></param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Remove(System.Collections.Generic.KeyValuePair{`0,`1})">
+            <summary>
+            Removes the key on the item (thread-safe).
+            </summary>
+            <param name="item"></param>
+            <returns></returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.Add(System.ValueTuple{`0,`1})">
+            <summary>
+            Adds or replaces a single item by key (thread-safe).
+            </summary>
+            <param name="item">The item to be added to the dictionary.</param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.CreateAsync(System.Func{`1,System.String},System.Int32,System.Int32,System.String,System.String)">
+            <summary>
+            Loads the tokenizer and the model for creating embeddings.
+            </summary>
+            <returns>Task for completion.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.AddAll(System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{`0,`1}})">
+            <summary>
+            Adds or replaces a set of items by key.
+            </summary>
+            <param name="items">The items to be indexed semantically.</param>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.AppendBatchLocked(System.Collections.Generic.IReadOnlyList{System.Collections.Generic.KeyValuePair{`0,`1}},System.Int32)">
+            <summary>
+            Appends a batch of items at once, assuming thread lock for Write access has already been taken.
+            </summary>
+            <param name="items">A batch of items.</param>
+            <param name="startOffset">The starting offset to add or replace the corpus embeddings from</param>
+            <returns>The new starting offset in the corpus.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.GetBatchTop(System.Collections.Generic.IReadOnlyList{System.String},System.Int32)">
+            <summary>
+            Gets the top N search results for each of the provided sentences.
+            </summary>
+            <param name="sentences"></param>
+            <param name="topK"></param>
+            <returns></returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.GetBatchTopLocked(TorchSharp.torch.Tensor,System.Int32)">
+            <summary>
+            Gets the top N most similar results in batches.
+            This method assumes the thread lock is already taken for read access.
+            </summary>
+            <param name="queryEmbeddings">All query embeddings in the shape of (Batch, Embedding).</param>
+            <param name="topK">The top results per batch to return (default is 10).</param>
+            <returns>A list of batches of search results.</returns>
+        </member>
+        <member name="M:PerceptivePyro.SemanticDictionary`2.IndexOfCorpusKeyRange(System.Int32)">
+            <summary>
+            Determines the start of the range of values for a given offset, or -1 if no range exists.
+            </summary>
+            <param name="corpusIndex"></param>
+            <returns></returns>
         </member>
         <member name="M:PerceptivePyro.TensorExtensions.NewGelu(TorchSharp.torch.Tensor)">
             <summary>

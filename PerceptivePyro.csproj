@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <DocumentationFile>NanoGPTSharp.xml</DocumentationFile>
+        <DocumentationFile>PerceptivePyro.xml</DocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
