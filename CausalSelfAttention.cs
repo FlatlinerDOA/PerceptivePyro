@@ -1,6 +1,7 @@
 ﻿namespace PerceptivePyro;
 
 using System.Diagnostics;
+using TorchSharp.Modules;
 using F = nn.functional;
 
 internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
@@ -36,8 +37,8 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
             Debug.WriteLine("WARNING: using slow attention. Flash Attention requires PyTorch >= 2.0");
             
             // causal mask to ensure that attention is only applied to the left in the input sequence
-            this.bias = torch.tril(torch.ones(block_size, block_size))
-                                        .view(1, 1, block_size, block_size);
+            this.register_buffer("bias", torch.tril(torch.ones(block_size, block_size))
+                                        .view(1, 1, block_size, block_size));
         }
 
         this.RegisterComponents();
@@ -55,7 +56,8 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
     public override Tensor forward(Tensor input)
     {
         var (B, T, C) = (input.shape[0], input.shape[1], input.shape[2]);
-        var p = this.c_attn.call(input).split(this.n_embd, dim: 2);
+        var qkv = this.c_attn.call(input);
+        var p = qkv.split(this.n_embd, dim: 2);
         var (q, k, v) = (p[0], p[1], p[2]);
         k = k.view(B, T, this.n_head, C / this.n_head).transpose(1, 2); // (B, nh, T, hs)
         q = q.view(B, T, this.n_head, C / this.n_head).transpose(1, 2); // (B, nh, T, hs)
@@ -64,8 +66,7 @@ internal class CausalSelfAttention : nn.Module<Tensor, Tensor>
         Tensor y;
         if (this.hasFlash)
         {
-            // TODO: Add this when TorchSharp upgrades to 2.0
-            throw new Exception("Adopt flash attention support now!");
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask: null, p: this.training ? this.dropout : 0, is_casual: true);
         }
         else
         {

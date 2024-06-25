@@ -6,6 +6,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.XPath;
+using static Tensorboard.ApiDef.Types;
 
 internal class Program
 {
@@ -13,7 +14,7 @@ internal class Program
     {
         typeof(GPTExamples),
         typeof(BigramLanguageModelExamples),
-        typeof(RobertaExamples),
+        ///typeof(RobertaExamples),
         typeof(SafeTensorsExamples),
         typeof(SelfAttentionExamples)
     };
@@ -42,8 +43,19 @@ internal class Program
     {
         try
         {
+            // Remove executable path as first argument
+            args = args[1..];
+
+            if (!args.Any())
+            {
+                ShowHelp();
+                args = new[] { Console.ReadLine() };
+            }
+
             var examples = GetExamples(ExampleTypes).ToDictionary(k => k.Name, k => k.Function, StringComparer.OrdinalIgnoreCase);
-            await examples.GetValueOrDefault(args.FirstOrDefault(), ShowHelp)();
+            await examples.Where(k => args.Any(k.Key.Contains)).Select(kv => kv.Value).FirstOrDefault(ShowHelp)();
+
+
         }
         catch (Exception ex)
         {
@@ -53,20 +65,24 @@ internal class Program
 
     private static IEnumerable<(string Name, Func<Task> Function, string Help)> GetExamples(IEnumerable<Type> exampleTypes)
     {
-        var q = from t in exampleTypes
-                from method in t.GetMethods(BindingFlags.Static | BindingFlags.Public).AsEnumerable()
-                select (
-                    Name: method.Name.ToLowerInvariant,
-                    Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
-                    Help: GetHelpForMethod(t, method));
-        return q;
+        var methods = from type in exampleTypes
+                      from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public).AsEnumerable<MethodInfo>()
+                      select (
+                        Name: method.Name.ToLowerInvariant(),
+                        Function: Expression.Lambda<Func<Task>>(Expression.Call(null, method)).Compile(),
+                        Help: GetHelpForMethod(type, method));
+        return methods;
     }
 
     private static string GetHelpForMethod(Type type, MethodInfo method)
     {
         var xmlFilename = $"{type.Assembly.GetName().Name}.xml";
-        var doc = new XPathDocument(xmlFilename);
-        doc.Dump();
+        if (File.Exists(xmlFilename))
+        {
+            var doc = new XPathDocument(xmlFilename);
+            doc.Dump();
+        }
+
         return null;
     }
 
