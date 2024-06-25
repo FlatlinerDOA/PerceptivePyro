@@ -1,4 +1,4 @@
-﻿namespace PerceptivePyro;
+﻿namespace PerceptivePyro.GPT;
 
 using F = nn.functional;
 
@@ -12,9 +12,9 @@ internal class LayerNorm : nn.Module<Tensor, Tensor>
 
     public LayerNorm(int ndim, bool hasBias) : base(nameof(LayerNorm))
     {
-        this.weight = nn.Parameter(torch.ones(ndim));
-        this.bias = hasBias ? nn.Parameter(torch.zeros(ndim)) : null;
+        weight = nn.Parameter(ones(ndim));
+        bias = hasBias ? nn.Parameter(zeros(ndim)) : null;
     }
 
-    public override Tensor forward(Tensor input) => F.layer_norm(input, this.weight.shape, this.weight, this.bias);    
+    public override Tensor forward(Tensor input) => F.layer_norm(input, weight.shape, weight, bias);
 }

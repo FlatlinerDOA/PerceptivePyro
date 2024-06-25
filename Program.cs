@@ -6,7 +6,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.XPath;
-using static Tensorboard.ApiDef.Types;
 
 internal class Program
 {
@@ -14,7 +13,6 @@ internal class Program
     {
         typeof(GPTExamples),
         typeof(BigramLanguageModelExamples),
-        ///typeof(RobertaExamples),
         typeof(SafeTensorsExamples),
         typeof(SelfAttentionExamples)
     };

@@ -1,18 +1,19 @@
-﻿namespace PerceptivePyro;
+﻿namespace PerceptivePyro.GPT;
 
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using PerceptivePyro;
 using TorchSharp.Modules;
-using F = TorchSharp.torch.nn.functional;
+using F = nn.functional;
 
-internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
+public class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tensor? loss)>
 {
     private GPTConfig config;
     private ModuleDict<nn.Module> transformer;
     private Linear lm_head;
 
-    internal GPTModel(GPTConfig config) : base(nameof(GPTModel))
+    public GPTModel(GPTConfig config) : base(nameof(GPTModel))
     {
         Contract.Assert(config.vocab_size is not 0);
         Contract.Assert(config.block_size is not 0);
@@ -28,10 +29,10 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
         var drop = nn.Dropout(config.dropout);
 
         var ln_f = new LayerNorm(config.n_embd, hasBias: config.has_bias);
-        
+
         // Transformer Layers
         var h = nn.ModuleList((from _ in Enumerable.Range(0, config.n_layer) select new TransformerBlock(config)).ToArray());
-        this.transformer = nn.ModuleDict(
+        transformer = nn.ModuleDict(
             ("wte", wte),
             ("wpe", wpe),
             ("drop", drop),
@@ -39,40 +40,40 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
             ("ln_f", ln_f)
         );
 
-        this.lm_head = nn.Linear(config.n_embd, config.vocab_size, hasBias: false);
+        lm_head = nn.Linear(config.n_embd, config.vocab_size, hasBias: false);
 
         // with weight tying when using torch.compile() some warnings get generated:
         // "UserWarning: functional_call was passed multiple values for tied weights.
         // This behavior is deprecated and will be an error in future versions"
         // not 100% sure what this is, so far seems to be harmless.
         // TODO: investigate
-        this.wte.weight = this.lm_head.weight; // https://paperswithcode.com/method/weight-tying
+        this.wte.weight = lm_head.weight; // https://paperswithcode.com/method/weight-tying
 
         // init all weights
-        this.apply(this._init_weights);
+        apply(_init_weights);
         // apply special scaled init to the residual projections, per GPT-2 paper
-        foreach (var (pn, p) in this.named_parameters())
+        foreach (var (pn, p) in named_parameters())
         {
             if (pn.EndsWith("c_proj.weight"))
             {
-                torch.nn.init.normal_(p, mean: 0.0, std: 0.02 / Math.Sqrt(2 * config.n_layer));
+                nn.init.normal_(p, mean: 0.0, std: 0.02 / Math.Sqrt(2 * config.n_layer));
             }
         }
 
-        this.RegisterComponents();
+        RegisterComponents();
 
         // report number of parameters
-        Debug.WriteLine($"number of parameters: {this.get_num_params() / 1e6}M");
+        Debug.WriteLine($"number of parameters: {get_num_params() / 1e6}M");
     }
 
-    private Embedding wte => (Embedding)this.transformer["wte"];
+    private Embedding wte => (Embedding)transformer["wte"];
 
-    private Embedding wpe => (Embedding)this.transformer["wpe"];
+    private Embedding wpe => (Embedding)transformer["wpe"];
 
-    private Dropout drop => (Dropout)this.transformer["drop"];
+    private Dropout drop => (Dropout)transformer["drop"];
 
-    private LayerNorm ln_f => (LayerNorm)this.transformer["ln_f"];
-    private ModuleList<TransformerBlock> h => (ModuleList<TransformerBlock>)this.transformer["h"];
+    private LayerNorm ln_f => (LayerNorm)transformer["ln_f"];
+    private ModuleList<TransformerBlock> h => (ModuleList<TransformerBlock>)transformer["h"];
 
     public static async Task<GPTModel> from_pretrained(string model_type, string device, GPTConfig override_args = null)
     {
@@ -101,13 +102,13 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
         var model = new GPTModel(config);
         model.to(device);
         var sd = model.state_dict();
-        var sd_keys = (from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv); // discard this mask / buffer, not a param
+        var sd_keys = from kv in sd where !kv.Key.EndsWith(".attn.bias") select kv; // discard this mask / buffer, not a param
 
         // init a huggingface/transformers model
         var safeTensorsFilePath = await SafeTensors.DownloadWeightsAsync(model_type);
         var sd_hf = (from t in SafeTensors.LoadFile(safeTensorsFilePath, device)
-                    where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
-                    select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
+                     where !t.Name.EndsWith(".attn.masked_bias") && !t.Name.EndsWith(".attn.bias") // ignore these, just a buffer
+                     select new KeyValuePair<string, Tensor>(t.Name, t.Tensor)).ToDictionary(k => k.Key, k => k.Value);
 
         // basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         // this means that we have to transpose these weights when we import them.
@@ -129,7 +130,7 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
             {
                 // special treatment for the Conv1D weights we need to transpose
                 Contract.Assert(source.shape.Reverse().SequenceEqual(target.shape), "Shape's not right");
-                using (var _ = torch.no_grad())
+                using (var _ = no_grad())
                 {
                     target.copy_(source.t());
                     //$"Transposed {name} {target.shape.Stringify()}".Dump();
@@ -140,7 +141,7 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
             {
                 // vanilla copy over the other parameters
                 Contract.Assert(source.shape.SequenceEqual(target.shape), $"Size of loaded tensor {name}: ({source.shape.Stringify()}) does not match configured ({target.shape.Stringify()})");
-                using (var _ = torch.no_grad())
+                using (var _ = no_grad())
                 {
                     target.copy_(source);
                     //$"Loaded {name} {target.shape.Stringify()}".Dump();
@@ -151,26 +152,26 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
 
         // Default to inference mode for most use cases.
         model.eval();
-        return model;        
+        return model;
     }
 
     public override (Tensor, Tensor?) forward(Tensor idx, Tensor? targets = null, bool embeddings_only = false)
     {
         var device = idx.device;
         var (b, t) = (idx.size()[0], idx.size()[1]);
-        Contract.Assert(t <= this.config.block_size, $"Cannot forward sequence of length {t}, block size is only {this.config.block_size}");
-        var pos = torch.arange(0, t, dtype: torch.@long, device: device).unsqueeze(0); // shape (1, t)
+        Contract.Assert(t <= config.block_size, $"Cannot forward sequence of length {t}, block size is only {config.block_size}");
+        var pos = arange(0, t, dtype: @long, device: device).unsqueeze(0); // shape (1, t)
 
         // forward the GPT model itself
-        var tok_emb = this.wte.call(idx); // token embeddings of shape (b, t, n_embd)
-        var pos_emb = this.wpe.call(pos); // position embeddings of shape (1, t, n_embd)
-        var x = this.drop.call(tok_emb + pos_emb);
-        foreach (var block in this.h)
+        var tok_emb = wte.call(idx); // token embeddings of shape (b, t, n_embd)
+        var pos_emb = wpe.call(pos); // position embeddings of shape (1, t, n_embd)
+        var x = drop.call(tok_emb + pos_emb);
+        foreach (var block in h)
         {
             x = block.call(x);
         }
 
-        x = this.ln_f.call(x);
+        x = ln_f.call(x);
 
         if (embeddings_only)
         {
@@ -182,7 +183,7 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
         if (targets is not null)
         {
             //if we are given some desired targets also calculate the loss
-            logits = this.lm_head.call(x);
+            logits = lm_head.call(x);
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index: -1);
         }
         else
@@ -206,13 +207,13 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
     /// </summary>
     /// <param name="non_embedding"></param>
     /// <returns></returns>
-    public long get_num_params(bool non_embedding = true) 
+    public long get_num_params(bool non_embedding = true)
     {
-        var n_params = (from p in this.parameters()
-                       select p.numel()).Sum();
+        var n_params = (from p in parameters()
+                        select p.numel()).Sum();
         if (non_embedding)
         {
-            n_params -= this.wpe.weight?.numel() ?? 0;
+            n_params -= wpe.weight?.numel() ?? 0;
         }
 
         return n_params;
@@ -227,10 +228,10 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
     /// <returns></returns>
     public void crop_block_size(int new_block_size)
     {
-        Contract.Assert(new_block_size <= this.config.block_size);
-        this.config = this.config with { block_size = new_block_size };
-        this.wpe.weight = nn.Parameter(this.wpe.weight[..new_block_size]);
-        foreach (var block in this.h)
+        Contract.Assert(new_block_size <= config.block_size);
+        config = config with { block_size = new_block_size };
+        wpe.weight = nn.Parameter(wpe.weight[..new_block_size]);
+        foreach (var block in h)
         {
             var bias = block.attn.bias;
             if (bias is not null)
@@ -245,10 +246,10 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
         using var no_grad = torch.no_grad();
 
         // if the sequence context is growing too long we must crop it at block_size
-        using var idx_cond = context.size(1) <= this.config.block_size ? context : context[.., -this.config.block_size..];
+        using var idx_cond = context.size(1) <= config.block_size ? context : context[.., -config.block_size..];
 
         // forward the model to get the logits for the index in the sequence
-        var (logits, _) = this.call(idx_cond, null, true);
+        var (logits, _) = call(idx_cond, null, true);
         return logits; // (B*, Last(T), C*)
     }
 
@@ -263,17 +264,17 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
     /// <param name="top_k"></param>
     /// <returns></returns>
     public Tensor generate(Tensor idx, int max_new_tokens, double temperature = 1.0d, int? top_k = null)
-    {        
+    {
         using var no_grad = torch.no_grad();
         foreach (var token in Enumerable.Range(0, max_new_tokens))
         {
             $"Step {token}".Dump();
 
             // if the sequence context is growing too long we must crop it at block_size
-            using var idx_cond = idx.size(1) <= this.config.block_size ? idx : idx[.., -this.config.block_size..];
+            using var idx_cond = idx.size(1) <= config.block_size ? idx : idx[.., -config.block_size..];
 
             // forward the model to get the logits for the index in the sequence
-            var (logits, _) = this.call(idx_cond, null, false);
+            var (logits, _) = call(idx_cond, null, false);
 
             // pluck the logits at the final step and scale by desired temperature
             logits = logits[.., -1, ..] / temperature;
@@ -282,7 +283,7 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
             if (top_k is int k)
             {
                 var top = Math.Min(k, (int)logits.size(-1));
-                var (v, top_indexes) = torch.topk(logits, top);
+                var (v, top_indexes) = topk(logits, top);
                 var lowest = v[.., -1].reshape(1, 1);
                 ////lowest.Dump();
                 logits.masked_fill_(logits < lowest, float.NegativeInfinity);
@@ -291,12 +292,12 @@ internal class GPTModel : nn.Module<Tensor, Tensor?, bool, (Tensor logits, Tenso
 
             // apply softmax to convert logits to (normalized) probabilities
             using var probs = F.softmax(logits, dim: -1);
-            
+
             // sample from the distribution
-            using var idx_next = torch.multinomial(probs, num_samples: 1);
+            using var idx_next = multinomial(probs, num_samples: 1);
 
             // append sampled index to the running sequence and continue
-            idx = torch.cat(new[] { idx, idx_next }, dim: 1);
+            idx = cat(new[] { idx, idx_next }, dim: 1);
         }
 
         return idx;

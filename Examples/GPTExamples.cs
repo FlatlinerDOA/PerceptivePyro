@@ -1,5 +1,6 @@
 ﻿namespace PerceptivePyro.Examples;
 
+using PerceptivePyro.GPT;
 using SharpToken;
 using System;
 using System.Diagnostics;
@@ -239,7 +240,7 @@ internal class GPTExamples
         var gpt = await GPTModel.from_pretrained("gpt2", device);
 
         // Some text we are giving GPT2 to riff on.
-        generator(gpt, "Hello, I'm a language model,").ToList().Dump();
+        gpt.generator("Hello, I'm a language model,").ToList().Dump();
     }
 
     public static async Task Gpt2_Large_Prompted()
@@ -252,7 +253,7 @@ internal class GPTExamples
         var gpt = await GPTModel.from_pretrained("gpt2-large", device);
 
         // Some text we are giving GPT2 to riff on.
-        generator(gpt, "Hi, I'm a massive boat").ToList().Dump();
+        gpt.generator("Hi, I'm a massive boat").ToList().Dump();
     }
 
     public static async Task Gpt3TokenCounts()
@@ -317,7 +318,7 @@ internal class GPTExamples
         var output = gpt.generate_embedding(gpt_context);
         output.shape.Dump();
 
-        var sentence_embeddings = mean_pooling(output, att_mask); // (B, T, C) -> (B, C)
+        var sentence_embeddings = output.mean_pooling(att_mask); // (B, T, C) -> (B, C)
         sentence_embeddings = sentence_embeddings.normalize(p: 2, dim: 1);
         for (int b = 0; b < encoded_prompt.Count; b++)
         {
@@ -331,27 +332,6 @@ internal class GPTExamples
         //    var embeddings = output[b, encoded_prompt[b].Count - 1, ..].data<float>().ToArray(); // (B, T, C) -> (C) // Last token            
         //    yield return (prompts[b], embeddings);
         //}
-    }
-
-    private static Tensor mean_pooling(Tensor model_output, Tensor attention_mask)
-    {
-        var token_embeddings = model_output; // token embeddings
-        var input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).@float();
-        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min: 1e-9);
-    }
-
-    private static IEnumerable<string> generator(GPTModel gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
-    {
-        var encoding = GptEncoding.GetEncoding("r50k_base");
-        var encoded_prompt = encoding.Encode(prompt, new HashSet<string>() { "<|endoftext|>" });
-        var gpt_context = torch.as_tensor(encoded_prompt, dtype: @long, device: device).reshape(1, encoded_prompt.Count);
-        gpt_context.Dump();
-        for (int i = 0; i < num_return_sequences; i++)
-        {
-            var output = gpt.generate(gpt_context, max_new_tokens: max_length, temperature: 0.8d, top_k: 200);
-            output.Dump();
-            yield return encoding.Decode(output[0].data<long>().Select(v => (int)v).ToList());      
-        }
     }
 
     private static void set_seed(int seed)

@@ -1,4 +1,6 @@
-﻿namespace PerceptivePyro.Examples;
+﻿using PerceptivePyro.GPT;
+
+namespace PerceptivePyro.Examples;
 
 internal class BigramLanguageModelExamples
 {

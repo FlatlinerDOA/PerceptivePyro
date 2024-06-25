@@ -1,6 +1,8 @@
-﻿namespace PerceptivePyro;
+﻿namespace PerceptivePyro.GPT;
 
-using F = TorchSharp.torch.nn.functional;
+using PerceptivePyro;
+
+using F = nn.functional;
 
 internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 {
@@ -17,16 +19,16 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
         this.device = device;
 
         // each token directly reads off the logits for the next token from a lookup table
-        this.token_embedding_table = nn.Embedding(vocab_size, n_embd);
-        this.position_embedding_table = nn.Embedding(block_size, n_embd);
+        token_embedding_table = nn.Embedding(vocab_size, n_embd);
+        position_embedding_table = nn.Embedding(block_size, n_embd);
 
         var layers = Enumerable.Range(0, n_layer)
             .Select(layer => ("layer_" + layer, (nn.Module<Tensor, Tensor>)new TransformerBlock(n_embd, n_heads: n_heads, block_size, dropout, hasBias: false))) // cast each one so whole list is an enumerable of (string, Module<Tensor, Tensor>)
             .Append(("norm", nn.LayerNorm(n_embd)));
-        this.blocks = nn.Sequential(layers);
-        this.lm_head = nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
-        
-        this.RegisterComponents();
+        blocks = nn.Sequential(layers);
+        lm_head = nn.Linear(n_embd, vocab_size); // Layer of indirection from vocab to embeddings
+
+        RegisterComponents();
     }
 
     public override (Tensor, Tensor) forward(Tensor idx, Tensor? targets = null)
@@ -34,24 +36,24 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
         var (B, T) = (idx.shape[0], idx.shape[1]);
 
         // index and targets are both (b, t) tensor of integers
-        var tok_emb = this.token_embedding_table.call(idx); // (Batch, Time, Channel)
-        var pos_emb = this.position_embedding_table.call(arange(T, device: this.device));
+        var tok_emb = token_embedding_table.call(idx); // (Batch, Time, Channel)
+        var pos_emb = position_embedding_table.call(arange(T, device: device));
         var x = tok_emb + pos_emb; // (B, T, C)
-        x = this.blocks.call(x); // Apply self-attention. (B, T, C)
-        var logits = this.lm_head.call(x); // (Batch, Time, vocab_size)
-        
+        x = blocks.call(x); // Apply self-attention. (B, T, C)
+        var logits = lm_head.call(x); // (Batch, Time, vocab_size)
+
         if (targets is null)
         {
             // NOTE: logits.shape returned here when targets is null is (B,T,C)
             return (logits, null);
         }
 
-        
+
         var (b, t, c) = (logits.shape[0], logits.shape[1], logits.shape[2]);
         logits = logits.view(b * t, c);
         targets = targets.view(b * t);
         var loss = F.cross_entropy(logits, targets);
-        
+
         // NOTE: logits.shape returned here is (B*T,C)
         return (logits, loss);
     }
@@ -62,15 +64,15 @@ internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, 
         foreach (var _ in Enumerable.Range(0, max_new_tokens))
         {
             // crop idx to the last block_size tokens
-            var idx_cond = idx[.., ^this.block_size..];
+            var idx_cond = idx[.., ^block_size..];
             // get the predictions
-            var (logits, __) = this.call(idx_cond, null);
+            var (logits, __) = call(idx_cond, null);
             // focus only on the last time step
-            logits = logits[.., -1, ..]; 
-            
+            logits = logits[.., -1, ..];
+
             ////long lastIndex = logits.shape[0] - 1;
             ////logits = logits.narrow(0, lastIndex, 1);
-            
+
             // apply softmax to get probabilities
             var probs = F.softmax(logits, dim: -1); // (B, C)
             // sample form the distribution
