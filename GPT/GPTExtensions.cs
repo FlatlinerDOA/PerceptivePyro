@@ -1,4 +1,4 @@
-﻿using SharpToken;
+﻿using Microsoft.ML.Tokenizers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,8 +11,9 @@ namespace PerceptivePyro.GPT
     {
         public static IEnumerable<string> generator(this GPTModel gpt, string prompt, int max_length = 30, int num_return_sequences = 1, string device = "cpu")
         {
-            var encoding = GptEncoding.GetEncoding("r50k_base");
-            var encoded_prompt = encoding.Encode(prompt, new HashSet<string>() { "<|endoftext|>" });
+            // TODO: , new HashSet<string>() { "<|endoftext|>" }
+            var encoding = Tokenizer.CreateTiktokenForEncoding("r50k_base");
+            var encoded_prompt = encoding.EncodeToIds(prompt).ToList();
             var gpt_context = torch.as_tensor(encoded_prompt, dtype: @long, device: device).reshape(1, encoded_prompt.Count);
             gpt_context.Dump();
             for (int i = 0; i < num_return_sequences; i++)

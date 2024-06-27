@@ -3,9 +3,9 @@
 /// <summary>
 /// LINQPad style dump extensions for "stringify" nicely and printing out to the console.
 /// </summary>
-internal static class DumpExtensions
+public static class DumpExtensions
 {
-    internal static string Stringify(this object? item) => item switch
+    public static string Stringify(this object? item) => item switch
     {
         null => "<null>",
         string s => s,
@@ -19,9 +19,9 @@ internal static class DumpExtensions
         _ => ((object)item)?.ToString() ?? "<null>"
     };
 
-    internal static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
+    public static string Stringify(this IEnumerable items) => "[ "  + string.Join(", ", items.Cast<object>().Select(i => i.Stringify())) + " ]";
  
-    internal static string Stringify(this TorchSharp.Scalar item) =>
+    public static string Stringify(this TorchSharp.Scalar item) =>
         item.Type switch
         {
             ScalarType.Float16 => item.ToDouble().ToString(),
@@ -39,7 +39,7 @@ internal static class DumpExtensions
             _ => item.ToString() ?? "<null>",
         };
 
-    internal static T Dump<T>(this T item)
+    public static T Dump<T>(this T item)
     {
         var text = item.Stringify();
         Console.WriteLine(text);

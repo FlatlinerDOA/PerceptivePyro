@@ -1,18 +1,14 @@
 ﻿namespace PerceptivePyro.GPT;
 
-using SharpToken;
+using Microsoft.ML.Tokenizers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using F = TorchSharp.torch.nn.functional;
-
 
 public class StreamingGPTModel : GPTModel
 {
-    private readonly GptEncoding encoding;
+    private readonly Tokenizer encoding;
     private Tensor idx;
     private int block_size;
     private double temperature;
@@ -20,7 +16,7 @@ public class StreamingGPTModel : GPTModel
     private readonly string device;
     private int current_length;
 
-    public StreamingGPTModel(GPTConfig config, GptEncoding encoding, double temperature, int? top_k = 1, string device = "cpu") : base(config)
+    public StreamingGPTModel(GPTConfig config, Tokenizer encoding, double temperature, int? top_k = 1, string device = "cpu") : base(config)
     {
         this.top_k = top_k;
         this.device = device;

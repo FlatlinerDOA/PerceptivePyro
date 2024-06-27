@@ -24,4 +24,5 @@ internal class MultiHeadAttention : nn.Module<Tensor, Tensor>
         output = dropout.call(output);
         return output;
     }
+
 }

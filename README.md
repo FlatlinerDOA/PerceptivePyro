@@ -1,15 +1,17 @@
 # Perceptive Pyro
 
-This library allows you to run selected Transformer based Large Language Models using just .NET and TorchSharp.
+This library allows you to load, run, train and fine-tune selected Transformer based Large Language Models using just .NET and TorchSharp.
 
 ### Key benefits
-* No python dependency
-* Nuget package references to TorchSharp and SharpToken only
-* Can self provision pre-trained models from HuggingFace at runtime (uses .safetensors).
+* No python dependency.
+* No unmanaged or unsafe code in the library (torchlib is a c-binding.)
+* Minimal dependencies - Package references to TorchSharp and Microsoft.ML.Tokenizers only
+* Can self provision pre-trained models from HuggingFace at runtime (only supports .safetensors weights).
 
 ### Use it to
 * Load GPT-2 pre-trained weights from HuggingFace and perform inference using it.
 * Train your own GPT-2 style models on your own data.
+* Load Whisper pre-trained weights and transcribe or translate audio to text.
 * Load a Roberta pre-trained model (all-distilroberta-v1) to generate vector embeddings for storing in a vector database such as Pinecone, ChromaDb or Milvus
 * Use a Roberta pre-trained model (all-distilroberta-v1) to perform semantic similarity scoring of sentences.
 
@@ -17,14 +19,14 @@ This library allows you to run selected Transformer based Large Language Models 
 This started as a learning exercise following along with [Andre Karpathy's Lets Build GPT: From scratch, in code, spelled out](https://www.youtube.com/watch?v=kCc8FmEb1nY&t=3510s).
 Let's train a GPT model from the ground up in C# using [TorchSharp](https://github.com/dotnet/TorchSharp)
 
-### Examples:
+### Tests:
 
-```
 This is just a bunch of examples of using transformer architecture all using pure C# and torch:
 
-PerceptivePyro {command}
+```
+dotnet test
+```
 
-{command}:
 * benchmark_msmarco - Evaluates GPT2 embedding sentence similarity scoring on the MS MARCO V2.1 dataset.
 * benchmark_sick - Evaluates GPT2 embedding sentence similarity scoring on the SICK dataset.
 * gpt2_unconditioned - Generates unconditioned random musings by GPT2 - 124M parameter model
@@ -36,8 +38,6 @@ PerceptivePyro {command}
 * roberta_similarity - Compares sentence similarity using the all-distilroberta-v1 model.
 * safetensors - Test code for loading .safetensors files
 * training_shakespeare - Training a small language model on Shakespeare (CUDA GPU with 10gb or more RAM required).
-
-```
 
 
 NOTE: The code has the following global usings in all files:

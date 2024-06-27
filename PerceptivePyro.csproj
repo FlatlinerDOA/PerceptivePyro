@@ -1,7 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -11,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="HNSW" Version="1.0.42139" />
-    <PackageReference Include="SharpToken" Version="2.0.3" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" Version="0.22.0-preview.24271.1" />
     <PackageReference Include="System.Collections.Specialized" Version="4.3.0" />
     <PackageReference Include="TorchSharp" Version="0.102.6" />
     <PackageReference Include="TorchSharp-cuda-windows" Version="0.102.6" />

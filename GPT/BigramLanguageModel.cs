@@ -4,7 +4,7 @@ using PerceptivePyro;
 
 using F = nn.functional;
 
-internal class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
+public class BigramLanguageModel : nn.Module<Tensor, Tensor?, (Tensor logits, Tensor? loss)>
 {
     private readonly int block_size;
     private readonly string device;
